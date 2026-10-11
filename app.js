@@ -1,6 +1,10 @@
 (function () {
 "use strict";
 
+/* Vis skriptfeil direkte på siden, så de ikke går upåaktet hen */
+window.addEventListener("error", e => { const el = document.getElementById("status"); if (el) el.innerHTML = '<b style="color:#ff6b5b">Skriptfeil</b><br>' + String(e.message).replace(/[<>&]/g, ""); });
+window.addEventListener("unhandledrejection", e => { const el = document.getElementById("status"); if (el) el.innerHTML = '<b style="color:#ff6b5b">Feil</b><br>' + String(e.reason && e.reason.message || e.reason).replace(/[<>&]/g, ""); });
+
 const CFG = Object.assign({ maptilerKey: "", clientName: "togskjerm" }, window.TOGSKJERM_CONFIG || {});
 const URL_VEH = "https://api.entur.io/realtime/v2/vehicles/graphql";
 const URL_JP  = "https://api.entur.io/journey-planner/v3/graphql";
@@ -168,14 +172,13 @@ function lagMapTiler(stil) {
 function lagVannKart() {
   const key = hentNokkel();
   if (!key || !L.vectorGrid) return null;
-  const vann = "#1b5f86", elv = "#3a97c8";
+  const vann = "#1b5f86";
   const skjul = { fill: false, stroke: false, weight: 0, opacity: 0 };
   const kjent = {
     landcover: p => (p.class === "wood" || p.class === "forest")
       ? { fill: true, fillColor: "#1a3123", fillOpacity: 0.9, stroke: false } : { fill: false, stroke: false },
     water: { fill: true, fillColor: vann, fillOpacity: 1, stroke: false },
-    waterway: (p, z) => p.class === "river" ? { weight: z >= 12 ? 3 : 2, color: elv, opacity: 1 }
-                       : (z >= 12 ? { weight: 1, color: elv, opacity: 0.8 } : { stroke: false })
+    waterway: skjul   // senterlinjer i elver tegnes ikke, vannflatene er nok
   };
   // Alle andre lag i fliskartet (veier, grenser, steder ...) skjules. Uten dette tegner VectorGrid dem i standardfarge.
   const stiler = typeof Proxy === "function"
@@ -446,22 +449,22 @@ async function hentVaer() {
     if (dag.length >= 8) vis = Array.from({ length: 8 }, (_, i) => dag[Math.round(i * (dag.length - 1) / 7)]);
     else vis = fra.filter((t, i) => i % 2 === 0).slice(0, 8);
     if (mitt !== S) return;
-    $("wLabel").textContent = mitt.vaer.navn + (dag.length >= 8 ? " i dag" : " fremover");
-    $("wItems").innerHTML = vis.map(t => {
+    const kol = vis.map(t => {
       const d = t.data, det = d.instant.details, tt = new Date(t.time);
       const sym = (d.next_1_hours || d.next_6_hours || d.next_12_hours || {}).summary;
-      const kode = sym ? sym.symbol_code : "";
       const nedb = d.next_1_hours ? d.next_1_hours.details.precipitation_amount : d.next_6_hours ? d.next_6_hours.details.precipitation_amount : null;
-      const nb = nedb != null && nedb > 0 ? String(nedb).replace(".", ",") + " mm" : "";
-      const imorgen = dagStr(tt) !== idag ? "i morgen " : "";
-      return `<span class="wi"><div class="wt">${imorgen}${hhmm(tt)}</div>
-        <img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(kode)}.svg" onerror="this.style.display='none'">
-        <div class="wv">${Math.round(det.air_temperature)}&deg;</div>
-        <div class="wx">${esc(symTekst(kode))}</div>
-        <div class="wm">${Math.round(det.wind_speed)} m/s</div><div class="wp">${nb}</div></span>`;
-    }).join(" ");
+      const dagTxt = dagStr(tt) !== idag ? tt.toLocaleDateString("nb-NO", { weekday: "short", timeZone: "Europe/Oslo" }) + " " : "";
+      return { tid: dagTxt + hhmm(tt), kode: sym ? sym.symbol_code : "", temp: Math.round(det.air_temperature), nedb, vind: Math.round(det.wind_speed) };
+    });
+    const nb = n => n == null ? "" : n > 0 ? String(Math.round(n * 10) / 10).replace(".", ",") : "–";
+    const rekke = (navn, f) => `<tr><td class="k">${navn}</td>${kol.map(f).join("")}</tr>`;
+    $("weather").innerHTML = `<table id="wTab"><tr><th class="k">${esc(mitt.vaer.navn)}</th>${kol.map(k => `<th>${esc(k.tid)}</th>`).join("")}</tr>` +
+      rekke("", k => `<td><img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(k.kode)}.svg" onerror="this.style.display='none'"></td>`) +
+      rekke("Temp", k => `<td class="tmp">${k.temp}&deg;</td>`) +
+      rekke("Nedbør mm", k => `<td class="nb">${nb(k.nedb)}</td>`) +
+      rekke("Vind m/s", k => `<td>${k.vind}</td>`) + `</table>`;
     feil.vaer = null; dbg(`Vær OK (${mitt.vaer.navn}): ${vis.length} tidspunkt`);
-  } catch (e) { feil.vaer = e.message; dbg("VÆR FEIL: " + e.message); $("wItems").textContent = "Værmelding utilgjengelig"; }
+  } catch (e) { feil.vaer = e.message; dbg("VÆR FEIL: " + e.message); $("weather").textContent = "Værmelding utilgjengelig"; }
   tegnStatus();
 }
 
@@ -557,6 +560,9 @@ $("btnAll").onclick = () => {
   oppdaterKart(lastVehicles);
 };
 $("btnFs").onclick = () => { const d = document.documentElement; document.fullscreenElement ? document.exitFullscreen() : (d.requestFullscreen || d.webkitRequestFullscreen).call(d); };
+$("btnGear").onclick = () => $("meny").classList.toggle("vis");
+document.addEventListener("click", e => { if (!$("meny").contains(e.target) && !$("btnGear").contains(e.target)) $("meny").classList.remove("vis"); });
+$("meny").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.id !== "btnMap" && b.id !== "btnAll") $("meny").classList.remove("vis"); });
 async function wake() { try { if (navigator.wakeLock) await navigator.wakeLock.request("screen"); } catch (e) {} }
 wake(); document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
 
@@ -640,7 +646,7 @@ function fyllKartValg() {
 }
 function apneInnstillinger() {
   U = klone(S); kandidater = [];
-  fyllKartValg(); $("kartType").value = tilgjengeligeKart().includes(U.kart) ? U.kart : "linje";
+  try { fyllKartValg(); $("kartType").value = tilgjengeligeKart().includes(U.kart) ? U.kart : "linje"; } catch (e) { dbg("Kartvalg: " + e.message); }
   $("keyInn").value = (() => { try { return localStorage.getItem("togskjerm.key") || ""; } catch (e) { return ""; } })();
   $("linjeInfo").textContent = ""; melding("");
   tegnStn(); tegnLinjer(); tegnVaerValgt();
