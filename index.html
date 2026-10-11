@@ -51,6 +51,9 @@
   #wTab .tmp { font-size:14px; font-weight:400; line-height:21px; }
   #wTab .nb { color:var(--nb); }
   .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+  .faner { display:flex; gap:3px; background:var(--card); border:1px solid var(--cardb); border-radius:999px; padding:3px; }
+  .faner a { text-decoration:none; color:var(--muted); font-weight:500; font-size:13px; padding:4px 12px; border-radius:999px; }
+  .faner a.aktiv { background:var(--prim); color:#fff; }
   #klokke { font-size:38px; font-weight:300; letter-spacing:-.5px; line-height:1; font-variant-numeric:tabular-nums; color:var(--text); }
   #klokke .sek { font-size:18px; color:var(--muted); margin-left:1px; }
   .card .g { font-size:13px; font-weight:400; margin-top:3px; padding:2px 7px; border-radius:6px; display:inline-block; }
@@ -147,6 +150,7 @@
     <div id="kortWrap"><div class="kh"><b>Neste tog</b> <button id="ruteKnapp" title="Bytt linje eller retning"><span class="lb" id="lnKode"></span><span id="lnDest"></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button> <span id="togNa">henter posisjon ...</span></div><div id="kort"></div></div>
     <div id="weather">Henter vær ...</div>
     <div class="right">
+      <nav class="faner"><a href="index.html" class="aktiv">Tog</a><a href="by.html">By</a></nav>
       <div id="klokke">--:--</div>
       <div id="status">Starter ...</div>
       <button id="btnGear" aria-label="Meny" title="Meny"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>

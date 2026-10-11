@@ -7,6 +7,7 @@ Filene:
 - `index.html`: selve siden
 - `app.js`: logikken
 - `config.js`: her limer du inn MapTiler-nøkkelen din
+- `by.html`, `by.js` og `by-demo.js`: bysiden (buss, trikk, T-bane) uten kart, med eksempeldata
 
 ## 1. Få en MapTiler-nøkkel (gratis)
 
@@ -64,3 +65,17 @@ Værmeldingen vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/
 - Retning for togposisjon gjettes ut fra destinasjonen du velger, siden sanntidsdataene ikke oppgir retning direkte.
 - Ruteavvik hentes bare for stasjonene du har valgt, og bare for den valgte linja.
 - Endre `clientName` i `config.js` til noe som identifiserer deg, slik Entur ber om.
+
+## Bysiden (buss, trikk og T-bane)
+
+Fanen «By» øverst bytter til `by.html`. Der ser du inntil 12 ruter som kort, uten kart. En rute er én linje fra én plattform til et sted, for eksempel T-bane 5 fra spor 2 på Carl Berners plass til Jernbanetorget.
+
+- Legg til ruter under Innstillinger: velg Fra og Til, trykk «Finn direkte ruter», kryss av og trykk «Legg til valgte». Listen viser plattform, retning, reisetid og hvor ofte linja går.
+- Hvert kort viser neste avgang (minutter eller klokkeslett), når du er fremme, de neste avgangene og eventuelle avvik. «ca.» betyr ruteplan uten sanntid.
+- Gangtid kan settes per rute, som på togsiden.
+- Fra-stedet står på hvert kort i den rekkefølgen du har valgt. Under Innstillinger kan du i stedet gruppere kortene etter avreisested, og i tannhjulmenyen kan du sortere etter første avgang.
+- `by.html?demo` viser eksempeldata uten nett, nyttig for å teste utseendet.
+- Bysiden har egne ruter og egen delelenke, men temaet (lys grønn, hvit eller mørk) er felles med togsiden.
+- Plattform eller spor står etter stasjonsnavnet. Flyttes en avgang til en annen plattform, blir plattformen rød.
+
+Last opp alle filene fra zip-filen, også `by.html`, `by.js` og `by-demo.js`, sammen med de andre.

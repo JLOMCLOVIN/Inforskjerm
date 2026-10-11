@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Byskjerm</title>
+<style>
+  /* Kort i rutenett, gruppert etter avreisested. Lys grønn som grunn, mørk når enheten bruker mørkt tema, eller når temaet velges i innstillingene. */
+  :root { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; } }
+  :root[data-theme="dark"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
+  body[data-tema="gronn"] { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); color-scheme:light; }
+  body[data-tema="hvit"] { --bg:#ffffff; --panel:#f3f5f3; --card:#ffffff; --cardb:#dde3de; --text:#1c2420; --muted:#66736b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#ffffff; --btnb:#cdd5cf; --btnh:#edf0ed; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf3e2; --avln:#ead9b4; --shadow:rgba(0,0,0,.18); color-scheme:light; }
+  body[data-tema="mork"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
+  * { box-sizing:border-box; }
+  html { margin:0; }
+  body { min-height:100vh; margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif; font-weight:300; }
+  header { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; padding:8px 14px; background:var(--panel); position:sticky; top:env(safe-area-inset-top, 0px); z-index:100; }
+  .faner { display:flex; gap:3px; background:var(--card); border:1px solid var(--cardb); border-radius:999px; padding:3px; }
+  .faner a { text-decoration:none; color:var(--muted); font-weight:500; font-size:13px; padding:4px 12px; border-radius:999px; }
+  .faner a.aktiv { background:var(--prim); color:#fff; }
+  h1 { font-size:18px; font-weight:400; margin:0; }
+  .right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+  #klokke { font-size:38px; font-weight:300; letter-spacing:-.5px; line-height:1; font-variant-numeric:tabular-nums; }
+  #klokke .sek { font-size:18px; color:var(--muted); margin-left:1px; }
+  #status { font-size:11px; color:var(--muted); text-align:right; max-width:240px; line-height:1.3; font-weight:400; }
+  #status b.ok { color:var(--ok); } #status b.bad { color:var(--bad); } #status b.demo { color:var(--accent); }
+  button { background:var(--btn); color:var(--text); border:1px solid var(--btnb); border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; white-space:nowrap; font-family:inherit; font-weight:400; }
+  button:hover { background:var(--btnh); }
+  button:disabled { opacity:.35; cursor:default; }
+  button.primary { color:#fff; background:var(--prim); border-color:var(--primb); }
+  #btnGear { width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+  #meny { display:none; position:absolute; top:calc(100% + 4px); right:14px; z-index:300; flex-direction:column; gap:6px; background:var(--panel); border:1px solid var(--btnb); border-radius:12px; padding:8px; box-shadow:0 8px 24px var(--shadow); min-width:220px; }
+  #meny.vis { display:flex; } #meny button { text-align:left; width:100%; }
+
+  main { padding:10px 14px 18px; }
+  section h2 { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:8px 2px 6px; }
+  .rutenett { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:10px; }
+
+  .rk { background:var(--card); border:1px solid var(--cardb); border-left:6px solid var(--lf); border-radius:12px; padding:9px 12px 9px 12px; display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .topp { display:flex; align-items:center; gap:10px; }
+  .rute { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+  .plf { flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:62px; padding:2px 8px 3px; border:2px solid var(--lf); border-radius:9px; background:var(--bg); line-height:1; }
+  .plf span { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); }
+  .plf b { font-size:24px; font-weight:600; margin-top:2px; }
+  .plf.endret { background:var(--bad); border-color:var(--bad); color:#fff; animation:blink 1.2s infinite; }
+  .plf.endret span { color:#fff; }
+  .plfT { font-weight:700; white-space:nowrap; }
+  .plfT.endret { color:#fff; background:var(--bad); border-radius:5px; padding:0 5px; animation:blink 1.2s infinite; }
+  .nyplf { color:var(--bad); font-weight:600; font-size:11px; }
+  .lbx, .lbs { display:inline-flex; align-items:center; gap:5px; background:var(--lf); color:var(--lt); border:0; border-radius:8px; padding:4px 10px 4px 7px; font-size:20px; font-weight:700; line-height:24px; flex:none; }
+  .lbs { padding:2px 9px 2px 6px; }
+  .lbx:hover { background:var(--lf); filter:brightness(1.08); }
+  .ik svg { width:17px; height:17px; display:block; }
+  .modus { font-size:12px; color:var(--muted); font-weight:400; }
+  .gang { margin-left:auto; font-size:12px; font-weight:400; padding:2px 8px; border-radius:6px; white-space:nowrap; }
+  .gang.rolig { background:var(--btn); color:var(--text); border:1px solid var(--btnb); }
+  .gang.snart { background:#f2b705; color:#2a1d00; }
+  .gang.naa { background:#1d7a3b; color:#fff; animation:blink 1.2s infinite; }
+  .gang.lop { background:#c0392b; color:#fff; animation:blink .8s infinite; }
+  .gang.sen { color:var(--muted); border:1px dashed var(--btnb); }
+  @keyframes blink { 50% { opacity:.6; } }
+  .strekning { font-size:19px; font-weight:600; color:var(--text); line-height:1.15; overflow-wrap:anywhere; }
+  .strekning b { font-weight:700; }
+  .fraLinje { font-size:15px; font-weight:500; color:var(--text); line-height:1.15; overflow-wrap:anywhere; } .pil { color:var(--lf); font-weight:700; }
+  .hoved { display:flex; align-items:center; gap:12px; margin-top:2px; }
+  .om { font-size:40px; font-weight:300; line-height:1; letter-spacing:-.5px; min-width:64px; font-variant-numeric:tabular-nums; }
+  .om small { font-size:15px; color:var(--muted); letter-spacing:0; }
+  .detalj { min-width:0; }
+  .tid { font-size:15px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tid .mot { color:var(--muted); font-weight:400; font-size:13px; }
+  .fremme { font-size:13px; color:var(--muted); font-weight:400; }
+  .fremme b { color:var(--text); font-weight:600; }
+  .hoved.innstilt .om, .hoved.innstilt .tid { text-decoration:line-through; color:var(--muted); }
+  .late { color:var(--bad); font-weight:600; } .x { color:var(--bad); font-weight:600; text-decoration:none; display:inline-block; }
+  .rp { color:var(--muted); font-size:11px; font-weight:400; }
+  .neste { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; font-size:13px; font-weight:400; border-top:1px dashed var(--btnb); padding-top:4px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .neste .k { color:var(--muted); }
+  .neste .maal { font-weight:700; text-decoration:underline; text-decoration-color:var(--lf); text-decoration-thickness:2px; text-underline-offset:3px; }
+  .neste .xx { text-decoration:line-through; color:var(--muted); }
+  .avvik.flytt { border-left-color:var(--bad); }
+  .avvik { font-size:12px; background:var(--avbg); border-left:3px solid var(--accent); padding:3px 7px; border-radius:4px; font-weight:400; margin-top:2px; }
+  .tom, .tomside { color:var(--muted); font-size:14px; padding:6px 0; }
+  .tomside { text-align:center; padding:60px 0; }
+
+  /* Innstillinger */
+  #dlg { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:20px; }
+  #dlg.vis { display:flex; }
+  .box { background:var(--panel); border:1px solid var(--btnb); border-radius:14px; width:min(760px,100%); padding:18px 22px; }
+  .box h2 { margin:0 0 6px; } .box h3 { margin:18px 0 6px; font-size:15px; color:var(--accent); }
+  .box input[type=text], .box select { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--btnb); background:var(--inp); color:var(--text); font-size:15px; font-family:inherit; }
+  .hint { font-size:12px; color:var(--muted); margin:4px 0; }
+  .chip { display:inline-block; background:var(--btn); border:1px solid var(--btnb); border-radius:16px; padding:3px 12px; font-size:14px; margin:4px 0; }
+  .treff div { padding:7px 10px; border-bottom:1px solid var(--btn); cursor:pointer; font-size:14px; }
+  .treff div:hover { background:var(--btn); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; align-items:center; }
+  .row > .kol { flex:1; min-width:200px; }
+  .foot { display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; justify-content:flex-end; }
+  .vr, .kr { display:flex; align-items:center; gap:10px; padding:7px 4px; border-bottom:1px solid var(--btn); font-size:14px; flex-wrap:wrap; }
+  .vt { flex:1; min-width:180px; display:flex; flex-direction:column; } .vt small { color:var(--muted); }
+  .kr.har { opacity:.6; }
+  .lbs { font-size:14px; line-height:20px; }
+  .lbs .ik svg { width:14px; height:14px; }
+  .gangInn { font-size:13px; color:var(--muted); white-space:nowrap; }
+  .gangInn input { width:52px; padding:3px 4px; border-radius:6px; border:1px solid var(--btnb); background:var(--inp); color:var(--text); font-size:14px; font-family:inherit; text-align:right; }
+  .flytt { display:flex; gap:3px; } .flytt button { padding:2px 8px; } .flytt .fjern { color:var(--bad); }
+
+  @media (max-width:760px) {
+    header { padding:6px 10px; gap:6px; }
+    .right { gap:8px; width:100%; justify-content:space-between; } #status { flex:1; text-align:left; } #klokke { font-size:28px; } #klokke .sek { font-size:14px; }
+    #status { max-width:120px; }
+    main { padding:8px 8px 14px; }
+    .rutenett { grid-template-columns:1fr; gap:8px; }
+    .om { font-size:34px; min-width:56px; }
+    #dlg { padding:8px; } .box { padding:14px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="right">
+    <nav class="faner"><a href="index.html" id="faneTog">Tog</a><a href="by.html" class="aktiv">By</a></nav>
+    <div id="klokke">--:--</div>
+    <div id="status">Starter ...</div>
+    <button id="btnGear" aria-label="Meny" title="Meny"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
+  <div id="meny">
+    <button id="btnSort">Sorter etter første avgang</button>
+    <button id="btnFs">Fullskjerm</button>
+    <button id="btnSet">Innstillinger</button>
+  </div>
+</header>
+<main id="ruter"></main>
+
+<div id="dlg">
+  <div class="box">
+    <h2>Innstillinger</h2>
+    <div class="hint">Velg inntil 12 ruter. En rute er én linje fra én plattform til et sted. Valgene lagres i nettleseren.</div>
+
+    <h3>1. Mine ruter (<span id="antall"></span>)</h3>
+    <div class="hint">Skriv gangtid i minutter til plattformen, så viser kortet når du må gå, og om du må løpe.</div>
+    <div id="valgte"></div>
+
+    <h3>2. Legg til ruter</h3>
+    <div class="row">
+      <div class="kol"><input type="text" id="fraSok" placeholder="Fra, f.eks. Carl Berners plass" autocomplete="off"><div id="fraValgt"></div><div class="treff" id="fraTreff"></div></div>
+      <button id="byttRetning" title="Bytt fra og til">⇄</button>
+      <div class="kol"><input type="text" id="tilSok" placeholder="Til, f.eks. Jernbanetorget" autocomplete="off"><div id="tilValgt"></div><div class="treff" id="tilTreff"></div></div>
+    </div>
+    <div class="row"><button id="finn">Finn direkte ruter</button></div>
+    <div class="hint" id="finnInfo"></div>
+    <div id="kand"></div>
+
+    <h3>3. Utseende</h3>
+    <div class="hint">Temaet er felles med togsiden.</div>
+    <div class="row">
+      <div class="kol"><select id="temaValg"><option value="gronn">Lys grønn</option><option value="hvit">Hvit</option><option value="mork">Mørk</option></select></div>
+      <div class="kol"><select id="sortValg"><option value="rekkefolge">Min rekkefølge, fra-sted på hvert kort</option><option value="grupper">Grupper etter avreisested</option><option value="tid">Sorter etter første avgang</option></select></div>
+    </div>
+
+    <div class="foot">
+      <button id="dlgReset">Eksempelruter</button>
+      <button id="dlgLink">Kopier lenke</button>
+      <button id="dlgCancel">Avbryt</button>
+      <button id="dlgSave" class="primary">Lagre</button>
+    </div>
+    <div class="hint" id="dlgMsg"></div>
+  </div>
+</div>
+
+<script src="config.js?v=8"></script>
+<script src="by-demo.js?v=2"></script>
+<script src="by.js?v=6"></script>
+</body>
+</html>
