@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Togskjerm</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root { --bg:#0f1b14; --panel:#16261c; --text:#f1f5ee; --muted:#9db3a3; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  #app { display:flex; flex-direction:column; height:100%; }
+  header { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:stretch; padding:10px 14px; background:var(--panel); }
+  #kort { display:flex; gap:12px; flex-wrap:wrap; }
+  .card { background:#1d3326; border-radius:12px; padding:8px 16px; min-width:190px; }
+  .card .l { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  .card .t { font-size:44px; font-weight:800; line-height:1.05; }
+  .card .s { font-size:15px; color:var(--muted); min-height:20px; }
+  .card .s .late { color:var(--bad); font-weight:600; } .card .s .ontime { color:var(--ok); font-weight:600; }
+  #weather { display:flex; flex-direction:column; justify-content:center; gap:4px; }
+  #weather .wl { font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  #wItems { display:flex; gap:6px; }
+  .wi { display:flex; flex-direction:column; align-items:center; background:#1d3326; border-radius:10px; padding:4px 6px; width:78px; text-align:center; }
+  .wi .wt { font-size:12px; color:var(--muted); line-height:1.1; white-space:nowrap; }
+  .wi img { width:32px; height:32px; }
+  .wi .wv { font-size:19px; font-weight:700; line-height:1.1; }
+  .wi .wx { font-size:11px; line-height:1.1; min-height:24px; display:flex; align-items:center; justify-content:center; }
+  .wi .wm { font-size:11px; color:var(--muted); }
+  .wi .wp { font-size:11px; color:#7fb8ff; min-height:13px; }
+  .right { display:flex; flex-direction:column; justify-content:center; align-items:flex-end; gap:8px; margin-left:auto; }
+  #status { font-size:13px; color:var(--muted); text-align:right; max-width:380px; }
+  #status b.ok { color:var(--ok); } #status b.bad { color:var(--bad); }
+  .tools { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  button { background:#24402f; color:var(--text); border:1px solid #35573f; border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; white-space:nowrap; font-family:inherit; }
+  button:hover { background:#2d5139; }
+  button.primary { background:#2f7d4a; border-color:#58c47a; }
+  #avvik { padding:0 16px; background:#2b1f12; }
+  #avvik:empty { display:none; }
+  #avvik .a { padding:8px 0; border-bottom:1px solid #4a3820; font-size:15px; }
+  #avvik .a:last-child { border-bottom:0; }
+  #avvik .a b { color:var(--accent); }
+  #avvik .a.innstilt b { color:var(--bad); }
+  #avvik .a .d { color:var(--muted); font-size:13px; display:block; }
+  #map { flex:1; min-height:0; }
+  #map.leaflet-container { background:radial-gradient(ellipse at 50% 40%, #16281e 0%, #0b140f 75%); }
+  .mork { filter:invert(1) hue-rotate(170deg) brightness(.82) contrast(.95) saturate(.6); }
+  .trainIcon { width:34px; height:34px; border-radius:50%; background:var(--accent); border:3px solid #fff; display:flex; align-items:center; justify-content:center; color:#10200f; font-weight:800; font-size:11px; animation:puls 2s infinite; }
+  @keyframes puls { 0% { box-shadow:0 0 0 0 rgba(242,183,5,.7); } 70% { box-shadow:0 0 0 18px rgba(242,183,5,0); } 100% { box-shadow:0 0 0 0 rgba(242,183,5,0); } }
+  .trainIcon.other { background:#7d8f82; opacity:.8; animation:none; }
+  .stnLabel { background:#1b5e35; color:#fff; border:2px solid #58c47a; font-weight:700; font-size:15px; line-height:1.25; padding:3px 9px; border-radius:8px; text-align:center; }
+  .stnLabel:before { display:none; }
+  .stnLabel .tid { font-size:20px; font-weight:800; color:var(--accent); }
+  .stnLabel .fs { font-size:12px; font-weight:600; }
+  .stnSmall { background:rgba(20,35,26,.85); color:#dfeee4; border:1px solid #3d7a55; font-weight:600; font-size:12px; padding:1px 5px; border-radius:4px; }
+  .stnSmall:before { display:none; }
+  #map.zoomedOut .stnSmall { display:none; }
+  #debug { display:none; position:absolute; z-index:1000; left:10px; bottom:10px; max-width:80%; max-height:40%; overflow:auto; background:rgba(0,0,0,.85); color:#cfe; font:12px/1.4 monospace; padding:8px 10px; border-radius:8px; white-space:pre-wrap; }
+
+  /* Innstillinger */
+  #dlg { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:20px; }
+  #dlg.vis { display:flex; }
+  .box { background:#16261c; border:1px solid #35573f; border-radius:14px; width:min(720px,100%); padding:18px 22px; }
+  .box h2 { margin:0 0 6px; } .box h3 { margin:18px 0 6px; font-size:15px; color:var(--accent); }
+  .box input[type=text], .box select { width:100%; padding:8px 10px; border-radius:8px; border:1px solid #35573f; background:#0f1b14; color:var(--text); font-size:15px; font-family:inherit; }
+  .hint { font-size:12px; color:var(--muted); margin:4px 0; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .chip { background:#24402f; border-radius:16px; padding:4px 6px 4px 12px; font-size:14px; }
+  .chip button { padding:0 6px; border:0; background:transparent; font-size:16px; color:var(--bad); }
+  .treff div { padding:7px 10px; border-bottom:1px solid #24402f; cursor:pointer; font-size:14px; }
+  .treff div:hover { background:#24402f; }
+  .treff small { color:var(--muted); }
+  .ln { display:block; padding:6px 4px; font-size:15px; }
+  .dest { margin:0 0 8px 26px; padding-left:10px; border-left:2px solid #35573f; }
+  .dest label { display:block; padding:3px 0; font-size:14px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .row > * { flex:1; min-width:150px; }
+  .foot { display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; justify-content:flex-end; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div id="kort"></div>
+    <div id="weather"><div class="wl" id="wLabel">Vær</div><div id="wItems">Henter vær ...</div></div>
+    <div class="right">
+      <div id="status">Starter ...</div>
+      <div class="tools">
+        <button id="btnMap">Kart</button>
+        <button id="btnAll">Vis alle tog</button>
+        <button id="btnFs">Fullskjerm</button>
+        <button id="btnSet">Innstillinger</button>
+      </div>
+    </div>
+  </header>
+  <div id="avvik"></div>
+  <div id="map"></div>
+  <pre id="debug"></pre>
+</div>
+
+<div id="dlg">
+  <div class="box">
+    <h2>Innstillinger</h2>
+    <div class="hint">Valgene lagres i nettleseren din. Bruk «Kopier lenke» for å dele oppsettet med andre.</div>
+
+    <h3>1. Stasjoner eller holdeplasser (1 til 3)</h3>
+    <div class="chips" id="valgteStn"></div>
+    <input type="text" id="stnSok" placeholder="Søk etter stasjon eller holdeplass, f.eks. Fetsund" autocomplete="off">
+    <div class="treff" id="stnTreff"></div>
+
+    <h3>2. Linje og retning</h3>
+    <button id="finnLinjer">Finn linjer ved valgte stasjoner</button>
+    <div class="hint" id="linjeInfo"></div>
+    <div id="linjeListe"></div>
+
+    <h3>3. Sted for værmelding</h3>
+    <div class="chips" id="vaerValgt"></div>
+    <input type="text" id="vaerSok" placeholder="Søk etter sted, f.eks. Oslo" autocomplete="off">
+    <div class="treff" id="vaerTreff"></div>
+
+    <h3>4. Kart</h3>
+    <div class="row">
+      <select id="kartType">
+        <option value="linje">Linjekart (ingen nøkkel)</option>
+        <option value="maptiler">MapTiler (krever nøkkel)</option>
+        <option value="mork">Kartverket, mørkt</option>
+        <option value="farger">Kartverket, farger</option>
+      </select>
+      <select id="stilId">
+        <option value="dataviz-dark">MapTiler: Dataviz mørk</option>
+        <option value="streets-v2-dark">MapTiler: Gater mørk</option>
+        <option value="backdrop-dark">MapTiler: Backdrop mørk</option>
+        <option value="topo-v2">MapTiler: Topo</option>
+      </select>
+    </div>
+    <div class="row"><input type="text" id="keyInn" placeholder="MapTiler API-nøkkel (lagres bare i denne nettleseren)" autocomplete="off"></div>
+    <div class="hint">Har du lagt nøkkelen i config.js trenger du ikke fylle den inn her.</div>
+
+    <div class="foot">
+      <button id="dlgDbg">Diagnostikk</button>
+      <button id="dlgReset">Nullstill</button>
+      <button id="dlgLink">Kopier lenke</button>
+      <button id="dlgCancel">Avbryt</button>
+      <button id="dlgSave" class="primary">Lagre</button>
+    </div>
+    <div class="hint" id="dlgMsg"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
