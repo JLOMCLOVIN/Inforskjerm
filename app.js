@@ -24,7 +24,8 @@ const STANDARD = {
   kart: "linje",
   stil: "dataviz-dark",
   tema: "gronn",
-  togIkon: "damp"
+  togIkon: "damprøyk",
+  visVaer: true
 };
 /* Fargetemaer for linjekartet og markørene. lys = lys bakgrunn (sporlinja tegnes da rød med hvit kant). */
 const TEMA = {
@@ -49,7 +50,9 @@ function normaliser(o) {
   if (!s.linje || !s.linje.kode) s.linje = klone(STANDARD.linje);
   if (!s.vaer || !isFinite(s.vaer.lat)) s.vaer = klone(STANDARD.vaer);
   if (!TEMA[s.tema]) s.tema = "gronn";
-  if (!["damp", "damprøyk", "dampfront", "emoji", "moderne"].includes(s.togIkon)) s.togIkon = "damp";
+  s.visVaer = s.visVaer !== false;
+  s.stasjoner.forEach(x => { const g = parseInt(x.gang, 10); x.gang = isFinite(g) && g > 0 ? Math.min(g, 180) : 0; });   // gangtid i minutter
+  if (!["damp", "damprøyk", "dampfront", "emoji", "moderne"].includes(s.togIkon)) s.togIkon = "damprøyk";
   if (s.kart === "mork") s.kart = "graatone";                                         // eldre lagrede valg
   if (!["linje", "aquarelle", "graatone", "farger"].includes(s.kart)) s.kart = "linje";  // fjernede kartvarianter
   return s;
@@ -214,7 +217,7 @@ function visLabels() { $("map").classList.toggle("zoomedOut", map.getZoom() < 11
 map.on("zoomend", visLabels);
 
 /* ---------- Kjøretidstilstand ---------- */
-let neste = [], motsatt = [];   // neste ankomst per stasjon, og neste avgang i motsatt retning          // neste ankomst per stasjon
+let neste = [], motsatt = [], etter = [];   // neste ankomst per stasjon, og neste avgang i motsatt retning          // neste ankomst per stasjon
 let innstilte = [], avvik = [];
 let feil = { tid: null, veh: null, avvik: null, vaer: null, kart: null, rute: null };
 let sisteVehOk = null, lastVehicles = [], vMarkers = new Map(), showAll = false;
@@ -243,10 +246,11 @@ function bruk() {
   togNaVeh = null; togNaMal = null; togPos = null;
   $("lnKode").textContent = S.linje.kode;
   document.body.dataset.tema = S.tema;
+  settVaerSynlig();
   if (sistTema !== S.tema) { sistTema = S.tema; if (kartVann) { map.removeLayer(kartVann); } kartVann = undefined; }
 
   $("kort").innerHTML = S.stasjoner.map((s, i) =>
-    `<div class="card"><div class="l">${esc(s.navn)}</div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div><div class="m" id="m${i}"></div></div>`).join("");
+    `<div class="card"><div class="l">${esc(s.navn)}</div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div><div class="g" id="g${i}"></div><div class="m" id="m${i}"></div></div>`).join("");
 
   stnMarker = S.stasjoner.map((s, i) =>
     L.circleMarker([s.lat, s.lon], { pane: "pStn", radius: 9, color: TEMA[S.tema].stn, weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStn)
@@ -297,7 +301,7 @@ function ankomstQuery(id) {
 async function hentAnkomster() {
   const mitt = S;
   try {
-    const nye = [], nyeInnstilte = [], nyeMot = [];
+    const nye = [], nyeInnstilte = [], nyeMot = [], nyeEtter = [];
     for (let i = 0; i < mitt.stasjoner.length; i++) {
       const s = mitt.stasjoner[i];
       const d = await gql(URL_JP, ankomstQuery(s.id));
@@ -315,6 +319,7 @@ async function hentAnkomster() {
         .filter(c => c.expected.getTime() > naa - 60000)
         .sort((a, b) => a.expected - b.expected);
       nye[i] = treff.find(c => !c.cancelled) || null;
+      nyeEtter[i] = treff.filter(c => !c.cancelled)[1] || null;   // toget etter, til «rekker ikke»
       if ((mitt.retning.tekster || []).length) {     // samme linje, motsatt retning: bruk avgangstid
         nyeMot[i] = kall
           .filter(c => c.serviceJourney && c.serviceJourney.line && c.serviceJourney.line.publicCode === mitt.linje.kode && !c.cancellation)
@@ -328,14 +333,47 @@ async function hentAnkomster() {
       dbg(`${s.navn}: ${kall.length} anrop, ${treff.length} ${mitt.linje.kode} i valgt retning, neste ${nye[i] ? hhmm(nye[i].expected) : "ingen"}`);
     }
     if (mitt !== S) return;          // innstillinger endret underveis
-    neste = nye; motsatt = nyeMot; innstilte = nyeInnstilte; feil.tid = null;
+    neste = nye; motsatt = nyeMot; etter = nyeEtter; innstilte = nyeInnstilte; feil.tid = null;
     const forste = neste.find(n => n);
     if (forste) hentRute(forste.sj);
     hentTogPos();
   } catch (e) { feil.tid = e.message; dbg("RUTETID FEIL: " + e.message); }
   tegnKort(); tegnAvvik(); tegnStatus();
 }
+/* Når må man gå? Bruker gangtiden for stasjonen. Løping antas å ta omtrent 60 % av gangtiden. */
+const LOPEFAKTOR = 0.6;
+function tegnGange(i, s, n) {
+  const el = $("g" + i); if (!el) return;
+  const gang = s.gang || 0;
+  if (!gang || !n) { el.className = "g"; el.innerHTML = ""; return; }
+  const naa = Date.now(), gangMs = gang * 60000;
+  const slakk = n.expected - naa - gangMs;                 // tid til man må gå
+  let kl = "g", txt;
+  if (slakk >= 0) {
+    const m = Math.floor(slakk / 60000);
+    if (m >= 15) { kl += " rolig"; txt = `Gå kl <b>${hhmm(new Date(n.expected - gangMs))}</b> (om ${m} min)`; }
+    else if (m >= 1) { kl += " snart"; txt = `Gå om <b>${m} min</b>`; }
+    else { kl += " naa"; txt = "<b>Gå nå!</b>"; }
+  } else if (-slakk <= gangMs * (1 - LOPEFAKTOR)) {
+    kl += " lop"; txt = `<b>Løp!</b> ${Math.max(1, Math.round((n.expected - naa) / 60000))} min igjen`;
+  } else {
+    const e = etter[i];
+    kl += " sen";
+    txt = e ? `Rekker ikke. Neste <b>${hhmm(e.expected)}</b>, gå kl ${hhmm(new Date(e.expected - gangMs))}` : "Rekker ikke dette toget";
+  }
+  el.className = kl; el.innerHTML = txt;
+}
+function tegnKlokke() {
+  const d = new Date(), el = $("klokke"); if (!el) return;
+  const sek = d.toLocaleTimeString("nb-NO", { second: "2-digit", timeZone: "Europe/Oslo" }).padStart(2, "0").slice(-2);
+  el.innerHTML = `${hhmm(d)}<span class="sek">:${sek}</span>`;
+}
+function settVaerSynlig() {
+  $("weather").style.display = S.visVaer ? "" : "none";
+  $("btnVaer").textContent = S.visVaer ? "Skjul værmelding" : "Vis værmelding";
+}
 function tegnKort() {
+  tegnKlokke();
   tegnTogNa();
   const naa = Date.now();
   S.stasjoner.forEach((s, i) => {
@@ -347,6 +385,7 @@ function tegnKort() {
         me.innerHTML = `Motsatt<span class="vei"> vei</span> <b>${hhmm(mo.expected)}</b>${mo.dest ? " mot " + esc(mo.dest) : ""}${mo.realtime && fm >= 1 ? ` <span class="late">+${fm}</span>` : ""}`; }
     }
     if (!t || !stnMarker[i]) return;
+    tegnGange(i, s, n);
     if (!n) { t.textContent = "-"; sub.textContent = "Ingen flere avganger i dag"; stnMarker[i].setTooltipContent(esc(s.navn)); return; }
     const min = Math.round((n.expected - naa) / 60000);
     const forsink = Math.round((n.expected - n.aimed) / 60000);
@@ -524,7 +563,7 @@ const TOG_IKONER = {
 };
 function ikon(v, hoved) {
   const kode = (v.line && v.line.publicCode) || "";
-  const ik = TOG_IKONER[S.togIkon] || TOG_IKONER.damp;
+  const ik = TOG_IKONER[S.togIkon] || TOG_IKONER["damprøyk"];
   const k = hoved ? az() : (typeof v.bearing === "number" && v.bearing ? v.bearing : null);   // kjøreretning, for å snu loket riktig vei
   const snu = k != null && k > 180 && k < 360;
   const nokkel = [hoved, kode, S.togIkon, snu].join("|");
@@ -659,6 +698,7 @@ $("btnAll").onclick = () => {
 };
 $("btnFs").onclick = () => { const d = document.documentElement; document.fullscreenElement ? document.exitFullscreen() : (d.requestFullscreen || d.webkitRequestFullscreen).call(d); };
 $("btnGear").onclick = () => $("meny").classList.toggle("vis");
+$("btnVaer").onclick = () => { S.visVaer = !S.visVaer; lagreInnstillinger(S); settVaerSynlig(); map.invalidateSize(); };
 document.addEventListener("click", e => { if (!$("meny").contains(e.target) && !$("btnGear").contains(e.target)) $("meny").classList.remove("vis"); });
 $("meny").addEventListener("click", e => { const b = e.target.closest("button"); if (b && b.id !== "btnMap" && b.id !== "btnAll") $("meny").classList.remove("vis"); });
 async function wake() { try { if (navigator.wakeLock) await navigator.wakeLock.request("screen"); } catch (e) {} }
@@ -673,7 +713,8 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 const melding = t => { $("dlgMsg").textContent = t || ""; };
 
 function tegnStn() {
-  $("valgteStn").innerHTML = U.stasjoner.map((s, i) => `<span class="chip">${esc(s.navn)}<button data-i="${i}" title="Fjern">&times;</button></span>`).join("") || '<span class="hint">Ingen valgt</span>';
+  $("valgteStn").innerHTML = U.stasjoner.map((s, i) => `<span class="chip">${esc(s.navn)}<label class="gangInn" title="Gangtid til stasjonen i minutter"><input type="number" min="0" max="180" step="1" inputmode="numeric" data-g="${i}" value="${s.gang || ""}" placeholder="0"> min å gå</label><button data-i="${i}" title="Fjern">&times;</button></span>`).join("") || '<span class="hint">Ingen valgt</span>';
+  $("valgteStn").querySelectorAll("input[data-g]").forEach(inp => inp.oninput = () => { const g = parseInt(inp.value, 10); U.stasjoner[+inp.dataset.g].gang = isFinite(g) && g > 0 ? Math.min(g, 180) : 0; });
   $("valgteStn").querySelectorAll("button").forEach(b => b.onclick = () => { U.stasjoner.splice(+b.dataset.i, 1); tegnStn(); });
 }
 function tegnVaerValgt() { $("vaerValgt").innerHTML = `<span class="chip">${esc(U.vaer.navn)}</span>`; }
@@ -762,7 +803,7 @@ function apneInnstillinger() {
   U = klone(S); kandidater = [];
   $("temaValg").value = TEMA[U.tema] ? U.tema : "gronn";
   $("ikonValg").innerHTML = Object.entries(TOG_IKONER).map(([k, v]) => `<option value="${k}">${esc(v.navn)}</option>`).join("");
-  $("ikonValg").value = TOG_IKONER[U.togIkon] ? U.togIkon : "damp";
+  $("ikonValg").value = TOG_IKONER[U.togIkon] ? U.togIkon : "damprøyk";
   try { fyllKartValg(); $("kartType").value = tilgjengeligeKart().includes(U.kart) ? U.kart : "linje"; } catch (e) { dbg("Kartvalg: " + e.message); }
   $("keyInn").value = (() => { try { return localStorage.getItem("togskjerm.key") || ""; } catch (e) { return ""; } })();
   $("linjeInfo").textContent = ""; melding("");

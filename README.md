@@ -43,12 +43,14 @@ Mangler du valget «Deploy from a branch», er repoet som regel privat. På en g
 
 Trykk tannhjulet øverst til høyre. Der ligger knappene Kart, Alle, Fullskjerm og Innstillinger. Under Innstillinger velger du:
 
-1. Stasjoner eller holdeplasser (opptil tre).
+1. Stasjoner eller holdeplasser (opptil tre), med gangtid i minutter til hver. Da viser kortet «Gå kl ...», «Gå om X min», «Gå nå!», «Løp!» (regner med at løping tar omtrent 60 % av gangtiden) eller «Rekker ikke» med neste tog.
 2. Linje og retning. Trykk «Finn linjer», velg linje og deretter én retning. Destinasjoner i samme retning (for eksempel Oslo S og Asker) er slått sammen.
 3. Sted for værmeldingen.
-4. Ikon for toget (damplok, damplok med røyk, damplok forfra, emoji eller moderne tog), utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
+4. Ikon for toget (damplok med røyk er standard, ellers damplok, damplok forfra, emoji eller moderne tog), utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
 
 Valgene lagres i nettleseren. «Kopier lenke» lager en lenke som setter opp samme visning for andre. Nøkkelen din er ikke med i lenken.
+
+Klokka står øverst til høyre. Værmeldingen kan skjules og vises igjen med «Skjul værmelding» i tannhjulmenyen, nyttig på mobil.
 
 For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la nettleseren stå.
 
