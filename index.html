@@ -44,16 +44,17 @@
   .card .s .late { color:var(--bad); font-weight:600; } .card .s .ontime { color:var(--ok); font-weight:600; }
   #weather { background:var(--card); border-radius:10px; padding:3px 8px 4px; font-size:12px; color:var(--muted); }
   #wTab { border-collapse:collapse; font-size:12px; }
-  #wTab td, #wTab th { padding:0 6px; line-height:14px; text-align:center; font-weight:300; white-space:nowrap; color:var(--text); }
-  #wTab th { font-weight:400; color:var(--muted); font-size:11px; }
+  #wTab td, #wTab th { padding:0 4px; line-height:13px; text-align:center; font-weight:300; white-space:nowrap; color:var(--text); }
+  #wTab th { font-weight:400; color:var(--muted); font-size:10.5px; }
   #wTab td.k, #wTab th.k { text-align:left; color:var(--muted); font-size:11px; font-weight:400; padding-left:0; }
-  #wTab img { width:20px; height:20px; vertical-align:middle; margin:0 1px 0 -4px; }
-  #wTab .tmp { font-size:14px; font-weight:400; line-height:21px; }
+  #wTab img { width:18px; height:18px; vertical-align:middle; margin:0 1px 0 -3px; }
+  #wTab .tmp { font-size:13px; font-weight:400; line-height:19px; }
   #wTab .nb { color:var(--nb); }
   .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
   .faner { display:flex; gap:3px; background:var(--card); border:1px solid var(--cardb); border-radius:999px; padding:3px; }
   .faner a { text-decoration:none; color:var(--muted); font-weight:500; font-size:13px; padding:4px 12px; border-radius:999px; }
   .faner a.aktiv { background:var(--prim); color:#fff; }
+  #venstre { display:flex; flex-direction:column; align-items:flex-start; gap:5px; }
   #klokke { font-size:38px; font-weight:300; letter-spacing:-.5px; line-height:1; font-variant-numeric:tabular-nums; color:var(--text); }
   #klokke .sek { font-size:18px; color:var(--muted); margin-left:1px; }
   .card .g { font-size:13px; font-weight:400; margin-top:3px; padding:2px 7px; border-radius:6px; display:inline-block; }
@@ -71,7 +72,7 @@
   button { background:var(--btn); color:var(--text); border:1px solid var(--btnb); border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; white-space:nowrap; font-family:inherit; font-weight:400; }
   button:hover { background:var(--btnh); }
   button.primary { color:#fff; background:var(--prim); border-color:var(--primb); }
-  #btnGear { width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; }
+  #btnGear { flex:none; width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; }
   #meny { display:none; position:absolute; top:calc(100% + 4px); right:12px; z-index:1300; flex-direction:column; gap:6px; background:var(--panel); border:1px solid var(--btnb); border-radius:12px; padding:8px; box-shadow:0 8px 24px var(--shadow); min-width:190px; }
   #meny.vis { display:flex; }
   #meny button { text-align:left; width:100%; }
@@ -109,8 +110,9 @@
   /* Mobil og smal skjerm */
   @media (max-width:760px) {
     header { padding:6px 8px; gap:6px; }
-    .right { order:-1; width:100%; justify-content:space-between; }
-    #status { text-align:left; max-width:none; flex:1; }
+    #venstre { order:-2; flex-direction:row; align-items:center; gap:8px; }
+    .right { order:-1; flex:1; justify-content:flex-end; gap:8px; }
+    #status { text-align:right; max-width:150px; }
     #klokke { font-size:28px; } #klokke .sek { font-size:14px; }
     #kortWrap { width:100%; }
     .card .m .vei { display:none; } .card .m { max-width:none; }
@@ -147,11 +149,10 @@
 <body>
 <div id="app">
   <header>
+    <div id="venstre"><div id="klokke">--:--</div><nav class="faner"><a href="index.html" class="aktiv">Tog</a><a href="by.html">By</a></nav></div>
     <div id="kortWrap"><div class="kh"><b>Neste tog</b> <button id="ruteKnapp" title="Bytt linje eller retning"><span class="lb" id="lnKode"></span><span id="lnDest"></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button> <span id="togNa">henter posisjon ...</span></div><div id="kort"></div></div>
     <div id="weather">Henter vær ...</div>
     <div class="right">
-      <nav class="faner"><a href="index.html" class="aktiv">Tog</a><a href="by.html">By</a></nav>
-      <div id="klokke">--:--</div>
       <div id="status">Starter ...</div>
       <button id="btnGear" aria-label="Meny" title="Meny"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
     </div>
@@ -209,7 +210,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.min.js"></script>
-<script src="config.js?v=8"></script>
-<script src="app.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>

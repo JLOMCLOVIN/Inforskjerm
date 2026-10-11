@@ -57,7 +57,7 @@ For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la net
 
 Over stasjonskortene står «Neste tog» med linje, retning og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Trykk på linjemerket (for eksempel «R14 mot Asker») eller på sporlinja i kartet for å gå rett til valg av linje og retning. Hvert stasjonskort viser også neste avgang i motsatt retning. Kartet flytter seg aldri av seg selv, bare når du drar eller zoomer. Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
 
-Værmeldingen vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
+Værmeldingen viser neste hele time og deretter annenhver time, omtrent 15 timer fram. Den vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
 
 ## Kjente forbehold
 
@@ -73,7 +73,7 @@ Fanen «By» øverst bytter til `by.html`. Der ser du inntil 12 ruter som kort, 
 - Legg til ruter under Innstillinger: velg Fra og Til, trykk «Finn direkte ruter», kryss av og trykk «Legg til valgte». Listen viser plattform, retning, reisetid og hvor ofte linja går.
 - Hvert kort viser neste avgang (minutter eller klokkeslett), når du er fremme, de neste avgangene og eventuelle avvik. «ca.» betyr ruteplan uten sanntid.
 - Gangtid kan settes per rute, som på togsiden.
-- Fra-stedet står på hvert kort i den rekkefølgen du har valgt. Under Innstillinger kan du i stedet gruppere kortene etter avreisested, og i tannhjulmenyen kan du sortere etter første avgang.
+- Kortene grupperes etter hvor du skal («Til Jernbanetorget»), og hvert kort viser holdeplass og plattform eller spor. Under Innstillinger kan du i stedet gruppere etter hvor du reiser fra, eller vise fra og til på hvert kort i din egen rekkefølge. I tannhjulmenyen kan du sortere etter første avgang.
 - `by.html?demo` viser eksempeldata uten nett, nyttig for å teste utseendet.
 - Bysiden har egne ruter og egen delelenke, men temaet (lys grønn, hvit eller mørk) er felles med togsiden.
 - Plattform eller spor står etter stasjonsnavnet. Flyttes en avgang til en annen plattform, blir plattformen rød.

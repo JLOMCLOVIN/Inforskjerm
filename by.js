@@ -50,14 +50,14 @@ function felleTema() { try { const t = JSON.parse(localStorage.getItem("togskjer
 function lagreFelleTema(t) {
   try { const o = JSON.parse(localStorage.getItem("togskjerm.v1") || "{}") || {}; o.tema = t; localStorage.setItem("togskjerm.v1", JSON.stringify(o)); } catch (e) {}
 }
-const STANDARD = () => ({ ruter: eksempelRuter(), sortering: "rekkefolge" });
+const STANDARD = () => ({ ruter: eksempelRuter(), sortering: "maal" });
 
 function normaliser(o) {
   const s = Object.assign(STANDARD(), o || {});
   s.ruter = (Array.isArray(s.ruter) ? s.ruter : []).filter(r => r && r.linje && trygId(r.linje.id) && r.fraQuay && trygId(r.fraQuay.id) && r.tilQuay && trygId(r.tilQuay.id)).slice(0, MAKS);
   s.ruter.forEach(r => { const g = parseInt(r.gang, 10); r.gang = isFinite(g) && g > 0 ? Math.min(g, 180) : 0; });
   delete s.tema;
-  if (!["rekkefolge", "grupper", "tid"].includes(s.sortering)) s.sortering = "rekkefolge";
+  if (!["maal", "rekkefolge", "grupper", "tid"].includes(s.sortering)) s.sortering = "maal";
   return s;
 }
 const tilB64 = str => btoa(String.fromCharCode.apply(null, new TextEncoder().encode(str)));
@@ -213,7 +213,9 @@ function kort(r, i) {
     <div class="topp">
       <button class="lbx" data-r="${i}" title="Endre ruter"><span class="ik">${IKON[r.linje.modus] || IKON.bus}</span>${esc(r.linje.kode)}</button>
       <div class="rute">
-        ${S.sortering === "grupper"
+        ${S.sortering === "maal"
+          ? `<div class="strekning">${esc(r.fra.navn)}${plfTekst ? ", " + plfTekst : ""}</div>`
+          : S.sortering === "grupper"
           ? `<div class="strekning"><span class="pil">→</span> ${esc(r.til.navn)}</div>
         <div class="modus">Fra ${esc(r.fra.navn)}${plfTekst ? ", " + plfTekst : ""}</div>`
           : `<div class="fraLinje">${esc(r.fra.navn)}${plfTekst ? ", " + plfTekst : ""}</div>
@@ -234,14 +236,15 @@ function tegn() {
     $("tomVelg").onclick = apne; return;
   }
   const idx = S.ruter.map((r, i) => i);
-  if (S.sortering !== "grupper") {      // fra-stedet står på hvert kort
+  if (S.sortering === "maal" || S.sortering === "grupper") {      // grupper etter hvor reisen går til, eller fra
+    const felt = S.sortering === "maal" ? "til" : "fra", ord = S.sortering === "maal" ? "Til" : "Fra";
+    const grupper = [];
+    idx.forEach(i => { const n = S.ruter[i][felt].navn || ""; let g = grupper.find(x => x.n === n); if (!g) grupper.push(g = { n, i: [] }); g.i.push(i); });
+    el.innerHTML = grupper.map(g => `<section><h2>${ord} ${esc(g.n)}</h2><div class="rutenett">${g.i.map(i => kort(S.ruter[i], i)).join("")}</div></section>`).join("");
+  } else {      // fra og til står på hvert kort
     const forste = i => { const D = data[i]; const d = D && D.liste.find(x => !x.x); return d ? d.e : Infinity; };
     if (S.sortering === "tid") idx.sort((a, b) => forste(a) - forste(b));
     el.innerHTML = `<div class="rutenett">${idx.map(i => kort(S.ruter[i], i)).join("")}</div>`;
-  } else {
-    const grupper = [];
-    idx.forEach(i => { const n = S.ruter[i].fra.navn || ""; let g = grupper.find(x => x.n === n); if (!g) grupper.push(g = { n, i: [] }); g.i.push(i); });
-    el.innerHTML = grupper.map(g => `<section><h2>Fra ${esc(g.n)}</h2><div class="rutenett">${g.i.map(i => kort(S.ruter[i], i)).join("")}</div></section>`).join("");
   }
   el.querySelectorAll(".lbx").forEach(b => b.onclick = apne);
   tegnStatus();
@@ -394,8 +397,8 @@ document.addEventListener("click", e => { if (!$("meny").contains(e.target) && !
 $("btnSet").onclick = apne;
 $("btnSort").onclick = () => { if (S.sortering !== "tid") { sistSortering = S.sortering; S.sortering = "tid"; } else S.sortering = sistSortering; lagre(S); settSortKnapp(); tegn(); $("meny").classList.remove("vis"); };
 $("btnFs").onclick = () => { const d = document.documentElement; document.fullscreenElement ? document.exitFullscreen() : (d.requestFullscreen || d.webkitRequestFullscreen).call(d); $("meny").classList.remove("vis"); };
-let sistSortering = "rekkefolge";
-function settSortKnapp() { $("btnSort").textContent = S.sortering === "tid" ? "Vis i min rekkefølge" : "Sorter etter første avgang"; }
+let sistSortering = "maal";
+function settSortKnapp() { $("btnSort").textContent = S.sortering === "tid" ? "Grupper igjen" : "Sorter etter første avgang"; }
 function bruk() {
   const t = felleTema(); if (t) document.body.dataset.tema = t; else delete document.body.dataset.tema;
   settSortKnapp();

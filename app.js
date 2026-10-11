@@ -507,18 +507,22 @@ async function hentVaer() {
     if (!res.ok) throw new Error("HTTP " + res.status);
     const ts = (await res.json()).properties.timeseries;
     const naa = Date.now(), idag = dagStr(new Date());
-    const fra = ts.filter(t => new Date(t.time).getTime() >= naa - 1800000);
-    const dag = fra.filter(t => dagStr(new Date(t.time)) === idag);
-    let vis;
-    if (dag.length >= 8) vis = Array.from({ length: 8 }, (_, i) => dag[Math.round(i * (dag.length - 1) / 7)]);
-    else vis = fra.filter((t, i) => i % 2 === 0).slice(0, 8);
+    // Neste hele time, deretter annenhver time: 8 kolonner dekker omtrent 15 timer
+    const fra = ts.filter(t => new Date(t.time).getTime() > naa);
+    const vis = [];
+    for (let i = 0; i < fra.length && vis.length < 8; i += 2) vis.push(i);
     if (mitt !== S) return;
-    const kol = vis.map(t => {
-      const d = t.data, det = d.instant.details, tt = new Date(t.time);
+    let forrigeDag = idag;
+    const kol = vis.map(i => {
+      const t = fra[i], d = t.data, det = d.instant.details, tt = new Date(t.time);
       const sym = (d.next_1_hours || d.next_6_hours || d.next_12_hours || {}).summary;
-      const nedb = d.next_1_hours ? d.next_1_hours.details.precipitation_amount : d.next_6_hours ? d.next_6_hours.details.precipitation_amount : null;
-      const dagTxt = dagStr(tt) !== idag ? tt.toLocaleDateString("nb-NO", { weekday: "short", timeZone: "Europe/Oslo" }) + " " : "";
-      return { tid: dagTxt + hhmm(tt), kode: sym ? sym.symbol_code : "", temp: Math.round(det.air_temperature), nedb, vind: Math.round(det.wind_speed) };
+      // Nedbør for de to timene kolonnen dekker (når det finnes timesverdier)
+      let nedb = d.next_1_hours ? d.next_1_hours.details.precipitation_amount : d.next_6_hours ? d.next_6_hours.details.precipitation_amount : null;
+      const n2 = fra[i + 1];
+      if (d.next_1_hours && n2 && n2.data.next_1_hours && new Date(n2.time) - tt === 3600000) nedb += n2.data.next_1_hours.details.precipitation_amount;
+      const dag = dagStr(tt), nyDag = dag !== forrigeDag; forrigeDag = dag;
+      const tid = nyDag ? tt.toLocaleDateString("nb-NO", { weekday: "short", timeZone: "Europe/Oslo" }).replace(".", "") + " " + hhmm(tt).slice(0, 2) : hhmm(tt);
+      return { tid, kode: sym ? sym.symbol_code : "", temp: Math.round(det.air_temperature), nedb, vind: Math.round(det.wind_speed) };
     });
     const nb = n => n == null ? "" : n > 0 ? String(Math.round(n * 10) / 10).replace(".", ",") : "–";
     const rekke = (navn, f) => `<tr><td class="k">${navn}</td>${kol.map(f).join("")}</tr>`;
