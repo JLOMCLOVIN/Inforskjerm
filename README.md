@@ -73,9 +73,9 @@ Fanen «By» øverst bytter til `by.html`. Der ser du inntil 12 ruter som kort, 
 - Legg til ruter under Innstillinger: velg Fra og Til, trykk «Finn direkte ruter», kryss av og trykk «Legg til valgte». Listen viser plattform, retning, reisetid og hvor ofte linja går.
 - Hvert kort viser neste avgang (minutter eller klokkeslett), når du er fremme, de neste avgangene og eventuelle avvik. «ca.» betyr ruteplan uten sanntid.
 - Gangtid kan settes per rute, som på togsiden.
-- Kortene grupperes etter hvor du skal («Til Jernbanetorget»), og hvert kort viser holdeplass og plattform eller spor. Under Innstillinger kan du i stedet gruppere etter hvor du reiser fra, eller vise fra og til på hvert kort i din egen rekkefølge. I tannhjulmenyen kan du sortere etter første avgang.
+- Kortene grupperes etter hvor du skal («Til Jernbanetorget»). Hvert kort viser retningen med stor skrift og holdeplass og plattform eller spor med liten skrift under. Gruppene legges ved siden av hverandre når skjermen er bred nok, og kortene fyller hele bredden. Under Innstillinger kan du i stedet gruppere etter hvor du reiser fra, eller vise fra og til på hvert kort i din egen rekkefølge. I tannhjulmenyen kan du sortere etter første avgang.
 - `by.html?demo` viser eksempeldata uten nett, nyttig for å teste utseendet.
 - Bysiden har egne ruter og egen delelenke, men temaet (lys grønn, hvit eller mørk) er felles med togsiden.
-- Plattform eller spor står etter stasjonsnavnet. Flyttes en avgang til en annen plattform, blir plattformen rød.
+- Flyttes neste avgang til en annen plattform, blir plattformen rød på kortet.
 
 Last opp alle filene fra zip-filen, også `by.html`, `by.js` og `by-demo.js`, sammen med de andre.

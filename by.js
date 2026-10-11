@@ -204,7 +204,7 @@ function kort(r, i) {
     hoved = `<div class="hoved${forste.x ? " innstilt" : ""}">
       <div class="om">${esc(om.stor)}${om.liten ? `<small> ${om.liten}</small>` : ""}</div>
       <div class="detalj">
-        <div class="tid">${hhmm(forste.e)} ${forsinkelse(forste)}${forste.dest ? ` <span class="mot">mot ${esc(forste.dest)}</span>` : ""}</div>
+        <div class="tid">${hhmm(forste.e)} ${forsinkelse(forste)}${forste.dest && S.sortering !== "maal" ? ` <span class="mot">mot ${esc(forste.dest)}</span>` : ""}</div>
         <div class="fremme">${forste.fremme ? `Fremme <b>${hhmm(forste.fremme)}</b>${reise != null ? ` · ${forste.anslatt ? "ca. " : ""}${reise} min` : ""}` : ""}</div>
       </div></div>`;
   }
@@ -214,7 +214,8 @@ function kort(r, i) {
       <button class="lbx" data-r="${i}" title="Endre ruter"><span class="ik">${IKON[r.linje.modus] || IKON.bus}</span>${esc(r.linje.kode)}</button>
       <div class="rute">
         ${S.sortering === "maal"
-          ? `<div class="strekning">${esc(r.fra.navn)}${plfTekst ? ", " + plfTekst : ""}</div>`
+          ? `<div class="strekning">${forste && forste.dest ? `<span class="motord">mot</span> ${esc(forste.dest)}` : `<span class="pil">→</span> ${esc(r.til.navn)}`}</div>
+        <div class="modus">${esc(r.fra.navn)}${plfTekst ? ", " + plfTekst : ""}</div>`
           : S.sortering === "grupper"
           ? `<div class="strekning"><span class="pil">→</span> ${esc(r.til.navn)}</div>
         <div class="modus">Fra ${esc(r.fra.navn)}${plfTekst ? ", " + plfTekst : ""}</div>`
@@ -224,7 +225,6 @@ function kort(r, i) {
     </div>
     ${hoved}
     ${gangHtml || resten ? `<div class="neste">${resten ? `<span class="k">Deretter</span>${resten}` : ""}${gangHtml}</div>` : ""}
-    ${forste && forste.flyttet ? `<div class="avvik flytt">Neste avgang går fra ${esc(m.plf.toLowerCase())} <b>${esc(forste.plf)}</b>, ikke ${esc(r.fraQuay.kode)} som vanlig.</div>` : ""}
     ${D.avvik.length ? `<div class="avvik">${D.avvik.map(esc).join("<br>")}</div>` : ""}
   </article>`;
 }
@@ -240,10 +240,12 @@ function tegn() {
     const felt = S.sortering === "maal" ? "til" : "fra", ord = S.sortering === "maal" ? "Til" : "Fra";
     const grupper = [];
     idx.forEach(i => { const n = S.ruter[i][felt].navn || ""; let g = grupper.find(x => x.n === n); if (!g) grupper.push(g = { n, i: [] }); g.i.push(i); });
-    el.innerHTML = grupper.map(g => `<section><h2>${ord} ${esc(g.n)}</h2><div class="rutenett">${g.i.map(i => kort(S.ruter[i], i)).join("")}</div></section>`).join("");
+    el.className = "grupper";
+    el.innerHTML = grupper.map(g => `<section style="--n:${g.i.length}"><h2>${ord} ${esc(g.n)}</h2><div class="rutenett">${g.i.map(i => kort(S.ruter[i], i)).join("")}</div></section>`).join("");
   } else {      // fra og til står på hvert kort
     const forste = i => { const D = data[i]; const d = D && D.liste.find(x => !x.x); return d ? d.e : Infinity; };
     if (S.sortering === "tid") idx.sort((a, b) => forste(a) - forste(b));
+    el.className = "";
     el.innerHTML = `<div class="rutenett">${idx.map(i => kort(S.ruter[i], i)).join("")}</div>`;
   }
   el.querySelectorAll(".lbx").forEach(b => b.onclick = apne);

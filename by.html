@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Byskjerm</title>
 <style>
-  /* Kort i rutenett, gruppert etter avreisested. Lys grønn som grunn, mørk når enheten bruker mørkt tema, eller når temaet velges i innstillingene. */
+  /* Kort i rutenett, gruppert etter mål. Lys grønn som grunn, mørk når enheten bruker mørkt tema, eller når temaet velges i innstillingene. */
   :root { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; } }
   :root[data-theme="dark"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
@@ -36,7 +36,10 @@
 
   main { padding:10px 14px 18px; }
   section h2 { font-size:15px; font-weight:600; color:var(--text); margin:10px 2px 6px; }
-  .rutenett { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:10px; }
+  /* Hele bredden brukes: grupper legges ved siden av hverandre når de får plass, og kortene strekkes til å fylle raden */
+  .rutenett { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap:10px; }
+  main.grupper { display:flex; flex-wrap:wrap; gap:4px 16px; align-items:flex-start; }
+  main.grupper section { flex:var(--n) 1 calc(var(--n) * 290px + (var(--n) - 1) * 10px); min-width:min(100%, 290px); }
 
   .rk { background:var(--card); border:1px solid var(--cardb); border-left:6px solid var(--lf); border-radius:12px; padding:9px 12px 9px 12px; display:flex; flex-direction:column; gap:3px; min-width:0; }
   .topp { display:flex; align-items:center; gap:10px; }
@@ -53,7 +56,8 @@
   .lbs { padding:2px 9px 2px 6px; }
   .lbx:hover { background:var(--lf); filter:brightness(1.08); }
   .ik svg { width:17px; height:17px; display:block; }
-  .modus { font-size:12px; color:var(--muted); font-weight:400; }
+  .modus { font-size:13px; color:var(--muted); font-weight:400; }
+  .motord { font-size:14px; font-weight:400; color:var(--muted); }
   .gang { margin-left:auto; font-size:12px; font-weight:400; padding:2px 8px; border-radius:6px; white-space:nowrap; }
   .gang.rolig { background:var(--btn); color:var(--text); border:1px solid var(--btnb); }
   .gang.snart { background:#f2b705; color:#2a1d00; }
@@ -170,6 +174,6 @@
 
 <script src="config.js?v=8"></script>
 <script src="by-demo.js?v=2"></script>
-<script src="by.js?v=7"></script>
+<script src="by.js?v=8"></script>
 </body>
 </html>
