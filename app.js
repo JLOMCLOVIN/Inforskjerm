@@ -36,6 +36,7 @@ function normaliser(o) {
   if (!s.retning || !Array.isArray(s.retning.tekster)) s.retning = { tekster: [] };
   if (!s.linje || !s.linje.kode) s.linje = klone(STANDARD.linje);
   if (!s.vaer || !isFinite(s.vaer.lat)) s.vaer = klone(STANDARD.vaer);
+  if (s.kart === "maptiler") s.kart = s.stil || "dataviz-dark";   // eldre lagrede valg
   return s;
 }
 function tilBase64(str) { return btoa(String.fromCharCode.apply(null, new TextEncoder().encode(str))); }
@@ -119,42 +120,90 @@ map.setView([S.stasjoner[0].lat, S.stasjoner[0].lon], 13);
 const kv = "&copy; <a href='https://www.kartverket.no'>Kartverket</a>";
 const kartMork  = L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", { maxZoom: 18, attribution: kv, className: "mork" });
 const kartFarger = L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", { maxZoom: 18, attribution: kv });
-let kartMT = null, aktivtKart = null, kartModus = "linje";
+let aktivtKart = null, kartModus = "linje", kartLys = false, kartVann;
+const mtCache = {};
 const lagStopp = L.layerGroup().addTo(map);     // øvrige stopp
 const lagRute = L.layerGroup().addTo(map);      // sporlinje
 const lagStn = L.layerGroup().addTo(map);       // valgte stasjoner
 let feilKart = null, tileFeil = 0, tileOk = 0;
 
-function lagMapTiler() {
+/* Alle kartvarianter. mt = MapTiler (krever nøkkel). lys = lys bakgrunn (sporlinja tegnes da rød med hvit kant). */
+const KART = [
+  { id: "linje",           navn: "Linjekart (hav og elver)" },
+  { id: "aquarelle",       navn: "Aquarelle",              mt: true, lys: true },
+  { id: "dataviz-dark",    navn: "Dataviz mørk",           mt: true },
+  { id: "backdrop-dark",   navn: "Backdrop mørk",          mt: true },
+  { id: "streets-v2-dark", navn: "Gater mørk",             mt: true },
+  { id: "basic-v2-dark",   navn: "Enkel mørk",             mt: true },
+  { id: "outdoor-v2",      navn: "Friluft",                mt: true, lys: true },
+  { id: "topo-v2",         navn: "Topo",                   mt: true, lys: true },
+  { id: "landscape",       navn: "Landskap",               mt: true, lys: true },
+  { id: "winter-v2",       navn: "Vinter",                 mt: true, lys: true },
+  { id: "ocean",           navn: "Hav",                    mt: true, lys: true },
+  { id: "pastel",          navn: "Pastell",                mt: true, lys: true },
+  { id: "toner-v2",        navn: "Toner",                  mt: true, lys: true },
+  { id: "satellite",       navn: "Satellitt",              mt: true },
+  { id: "mork",            navn: "Kartverket mørkt" },
+  { id: "farger",          navn: "Kartverket farger",      lys: true }
+];
+const kartInfo = id => KART.find(k => k.id === id) || KART[0];
+const MT_ATTR = "&copy; <a href='https://www.maptiler.com/copyright/'>MapTiler</a> &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>";
+
+function lagMapTiler(stil) {
   const key = hentNokkel();
   if (!key) return null;
-  const l = L.tileLayer(`https://api.maptiler.com/maps/${encodeURIComponent(S.stil || "dataviz-dark")}/256/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(key)}`,
-    { maxZoom: 19, attribution: "&copy; <a href='https://www.maptiler.com/copyright/'>MapTiler</a> &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>" });
+  const l = L.tileLayer(`https://api.maptiler.com/maps/${encodeURIComponent(stil)}/256/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(key)}`,
+    { maxZoom: 19, maxNativeZoom: 17, attribution: MT_ATTR });
   l.on("tileload", () => { tileOk++; });
   l.on("tileerror", () => {
     tileFeil++;
-    if (tileOk === 0 && tileFeil >= 6 && kartModus === "maptiler") {
-      feilKart = "MapTiler-kartet lastet ikke (sjekk nøkkel, nettadresse-begrensning og stil). Bruker linjekart.";
+    if (tileOk === 0 && tileFeil >= 6 && kartModus !== "linje") {
+      feilKart = "MapTiler-kartet lastet ikke (sjekk nøkkel og nettadresse-begrensning). Bruker linjekart.";
       velgKart("linje"); tegnStatus();
     }
   });
   return l;
 }
-function tilgjengeligeKart() {
-  const k = ["linje"];
-  if (hentNokkel()) k.push("maptiler");
-  k.push("mork", "farger");
-  return k;
+/* Linjekart: vektorfliser fra MapTiler (OpenMapTiles-data) tegnet i egne farger, bare vann og litt skog. Havet er det store vannlaget. */
+function lagVannKart() {
+  const key = hentNokkel();
+  if (!key || !L.vectorGrid) return null;
+  const vann = "#1b5f86", elv = "#3a97c8";
+  const skjul = { fill: false, stroke: false, weight: 0, opacity: 0 };
+  const kjent = {
+    landcover: p => (p.class === "wood" || p.class === "forest")
+      ? { fill: true, fillColor: "#1a3123", fillOpacity: 0.9, stroke: false } : { fill: false, stroke: false },
+    water: { fill: true, fillColor: vann, fillOpacity: 1, stroke: false },
+    waterway: (p, z) => p.class === "river" ? { weight: z >= 12 ? 3 : 2, color: elv, opacity: 1 }
+                       : (z >= 12 ? { weight: 1, color: elv, opacity: 0.8 } : { stroke: false })
+  };
+  // Alle andre lag i fliskartet (veier, grenser, steder ...) skjules. Uten dette tegner VectorGrid dem i standardfarge.
+  const stiler = typeof Proxy === "function"
+    ? new Proxy(kjent, { get: (t, k) => (typeof k !== "string" || k in t) ? t[k] : skjul })
+    : Object.assign({ boundary: skjul, globallandcover: skjul, landuse: skjul, mountain_peak: skjul, park: skjul, place: skjul,
+        transportation: skjul, transportation_name: skjul, water_name: skjul, aerodrome_label: skjul, aeroway: skjul,
+        building: skjul, housenumber: skjul, poi: skjul }, kjent);
+  return L.vectorGrid.protobuf(`https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=${encodeURIComponent(key)}`, {
+    rendererFactory: L.canvas.tile, interactive: false, maxNativeZoom: 14, attribution: MT_ATTR, vectorTileLayerStyles: stiler
+  });
 }
-function velgKart(navn) {
+function tilgjengeligeKart() {
+  const harNokkel = !!hentNokkel();
+  return KART.filter(k => !k.mt || harNokkel).map(k => k.id);
+}
+function velgKart(id) {
+  const info = kartInfo(id);
+  if (info.mt && !hentNokkel()) { id = "linje"; return velgKart("linje"); }
   if (aktivtKart) { map.removeLayer(aktivtKart); aktivtKart = null; }
-  if (navn === "maptiler") { if (!kartMT) kartMT = lagMapTiler(); if (!kartMT) navn = "linje"; }
-  kartModus = navn;
-  if (navn === "maptiler") aktivtKart = kartMT;
-  else if (navn === "mork") aktivtKart = kartMork;
-  else if (navn === "farger") aktivtKart = kartFarger;
-  if (aktivtKart) aktivtKart.addTo(map).bringToBack();
-  $("btnMap").textContent = "Kart: " + ({ linje:"linjekart", maptiler:"MapTiler", mork:"mørkt", farger:"farger" }[navn]);
+  let lag = null;
+  if (info.id === "linje") { if (kartVann === undefined) kartVann = lagVannKart(); lag = kartVann; }
+  else if (info.mt) { lag = mtCache[info.id] || (mtCache[info.id] = lagMapTiler(info.id)); }
+  else if (info.id === "mork") lag = kartMork;
+  else if (info.id === "farger") lag = kartFarger;
+  kartModus = info.id; kartLys = !!info.lys;
+  if (lag) { aktivtKart = lag; lag.addTo(map); if (lag.bringToBack) lag.bringToBack(); }
+  $("btnMap").textContent = "Kart: " + info.navn.replace(/ \(.*\)$/, "");
+  tegnLinjekartGrunn();
 }
 function visLabels() { $("map").classList.toggle("zoomedOut", map.getZoom() < 11); }
 map.on("zoomend", visLabels);
@@ -197,19 +246,32 @@ function bruk() {
   if (S.stasjoner.length > 1 && bs.getSouthWest().distanceTo(bs.getNorthEast()) > 200) map.fitBounds(bs, { padding: [160, 160], maxZoom: 14 });
   else map.setView([S.stasjoner[0].lat, S.stasjoner[0].lon], 13);
   visLabels();
-  velgKart(S.kart === "maptiler" && !hentNokkel() ? "linje" : (S.kart || "linje"));
+  velgKart(S.kart || "linje");
   tegnLinjekartGrunn();
   tegnAvvik(); tegnStatus();
   hentAnkomster(); hentAvvik(); hentPosisjoner(); hentVaer();
 }
-function tegnLinjekartGrunn() {   // før reell rute er hentet: en enkel strek mellom valgte stasjoner
-  lagRute.clearLayers();
-  if (rute && rute.geom && rute.geom.length) {
-    L.polyline(rute.geom, { color: "#58c47a", weight: 10, opacity: .18, interactive: false }).addTo(lagRute);
-    L.polyline(rute.geom, { color: "#8fe3ad", weight: 3, opacity: .95, interactive: false }).addTo(lagRute);
-  } else if (rute && rute.stopp && rute.stopp.length > 1) {
-    L.polyline(rute.stopp.map(x => [x.lat, x.lon]), { color: "#2f6b47", weight: 3, opacity: .9 }).addTo(lagRute);
+function glatt(pts, n) {   // Chaikin hjørneskjæring: gir myke kurver når vi bare har stoppene å gå ut fra
+  for (let k = 0; k < n; k++) {
+    if (pts.length < 3) break;
+    const ut = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      ut.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25], [a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75]);
+    }
+    ut.push(pts[pts.length - 1]); pts = ut;
   }
+  return pts;
+}
+function tegnLinjekartGrunn() {
+  lagRute.clearLayers();
+  let g = null;
+  if (rute && rute.geom && rute.geom.length) g = rute.geom;                                   // ekte sporgeometri fra Entur
+  else if (rute && rute.stopp && rute.stopp.length > 1) g = glatt(rute.stopp.map(x => [x.lat, x.lon]), 3);   // reserve: glattet linje gjennom stoppene
+  if (!g) return;
+  const kant = kartLys ? "#ffffff" : "#58c47a", kjerne = kartLys ? "#b42318" : "#8fe3ad";
+  L.polyline(g, { color: kant, weight: kartLys ? 8 : 10, opacity: kartLys ? 0.9 : 0.18, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
+  L.polyline(g, { color: kjerne, weight: 3, opacity: 0.95, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
 }
 
 /* ---------- Ankomsttider ---------- */
@@ -486,7 +548,8 @@ function tegnStatus() {
 /* ---------- Knapper på hovedsiden ---------- */
 $("btnMap").onclick = () => {
   const k = tilgjengeligeKart(); const i = k.indexOf(kartModus);
-  velgKart(k[(i + 1) % k.length]);
+  const neste = k[(i + 1) % k.length];
+  S.kart = neste; lagreInnstillinger(S); velgKart(neste);
 };
 $("btnAll").onclick = () => {
   showAll = !showAll; $("btnAll").textContent = showAll ? "Bare mitt tog" : "Vis alle tog";
@@ -571,9 +634,13 @@ async function sokSteder(inp, boks, venue, valg) {
     boks.querySelectorAll("div[data-i]").forEach(d => d.onclick = () => { valg(f[+d.dataset.i]); inp.value = ""; boks.innerHTML = ""; });
   } catch (e) { boks.innerHTML = `<div class="hint">Søk feilet: ${esc(e.message)}</div>`; }
 }
+function fyllKartValg() {
+  const ok = tilgjengeligeKart();
+  $("kartType").innerHTML = KART.filter(k => ok.includes(k.id)).map(k => `<option value="${k.id}">${esc(k.navn)}</option>`).join("");
+}
 function apneInnstillinger() {
   U = klone(S); kandidater = [];
-  $("kartType").value = U.kart || "linje"; $("stilId").value = U.stil || "dataviz-dark";
+  fyllKartValg(); $("kartType").value = tilgjengeligeKart().includes(U.kart) ? U.kart : "linje";
   $("keyInn").value = (() => { try { return localStorage.getItem("togskjerm.key") || ""; } catch (e) { return ""; } })();
   $("linjeInfo").textContent = ""; melding("");
   tegnStn(); tegnLinjer(); tegnVaerValgt();
@@ -597,19 +664,19 @@ $("vaerSok").oninput = debounce(() => sokSteder($("vaerSok"), $("vaerTreff"), fa
 $("dlgSave").onclick = () => {
   if (!U.stasjoner.length) { melding("Velg minst én stasjon."); return; }
   if (!U.linje || !U.linje.kode) { melding("Velg linje."); return; }
-  U.kart = $("kartType").value; U.stil = $("stilId").value;
+  U.kart = $("kartType").value;
   try { const k = $("keyInn").value.trim(); if (k) localStorage.setItem("togskjerm.key", k); else localStorage.removeItem("togskjerm.key"); } catch (e) {}
   S = normaliser(U); lagreInnstillinger(S);
-  if (kartMT) { kartMT = null; }   // bygg om MapTiler-laget (ny nøkkel eller stil)
+  Object.keys(mtCache).forEach(k => delete mtCache[k]); kartVann = undefined;   // bygg om kartlagene (ny nøkkel)
   vehIngenModus = false; rute = null; lukk(); bruk();
 };
 $("dlgLink").onclick = async () => {
-  U.kart = $("kartType").value; U.stil = $("stilId").value;
+  U.kart = $("kartType").value;
   const l = delingsLenke(normaliser(U));
   try { await navigator.clipboard.writeText(l); melding("Lenken er kopiert. Din MapTiler-nøkkel er ikke med i lenken."); }
   catch (e) { window.prompt("Kopier lenken:", l); }
 };
-$("dlgReset").onclick = () => { U = klone(STANDARD); kandidater = []; tegnStn(); tegnLinjer(); tegnVaerValgt(); $("kartType").value = U.kart; melding("Standardoppsett valgt. Trykk Lagre."); };
+$("dlgReset").onclick = () => { U = klone(STANDARD); kandidater = []; tegnStn(); tegnLinjer(); tegnVaerValgt(); fyllKartValg(); $("kartType").value = U.kart; melding("Standardoppsett valgt. Trykk Lagre."); };
 $("dlgDbg").onclick = () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; };
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) lukk(); });
 

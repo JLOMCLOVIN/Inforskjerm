@@ -118,22 +118,9 @@
     <div class="treff" id="vaerTreff"></div>
 
     <h3>4. Kart</h3>
-    <div class="row">
-      <select id="kartType">
-        <option value="linje">Linjekart (ingen nøkkel)</option>
-        <option value="maptiler">MapTiler (krever nøkkel)</option>
-        <option value="mork">Kartverket, mørkt</option>
-        <option value="farger">Kartverket, farger</option>
-      </select>
-      <select id="stilId">
-        <option value="dataviz-dark">MapTiler: Dataviz mørk</option>
-        <option value="streets-v2-dark">MapTiler: Gater mørk</option>
-        <option value="backdrop-dark">MapTiler: Backdrop mørk</option>
-        <option value="topo-v2">MapTiler: Topo</option>
-      </select>
-    </div>
+    <div class="row"><select id="kartType"></select></div>
     <div class="row"><input type="text" id="keyInn" placeholder="MapTiler API-nøkkel (lagres bare i denne nettleseren)" autocomplete="off"></div>
-    <div class="hint">Har du lagt nøkkelen i config.js trenger du ikke fylle den inn her.</div>
+    <div class="hint">Har du lagt nøkkelen i config.js trenger du ikke fylle den inn her. Linjekartet tegner hav, innsjøer og elver når nøkkelen finnes. Knappen «Kart» på hovedsiden blar gjennom alle variantene.</div>
 
     <div class="foot">
       <button id="dlgDbg">Diagnostikk</button>
@@ -147,6 +134,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.min.js"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>
