@@ -22,7 +22,14 @@ const STANDARD = {
   retning: { tekster: ["Oslo", "Asker", "Drammen"], lat: 59.910357, lon: 10.753051 },
   vaer: { navn: "Oslo", lat: 59.91, lon: 10.75 },
   kart: "linje",
-  stil: "dataviz-dark"
+  stil: "dataviz-dark",
+  tema: "gronn"
+};
+/* Fargetemaer for linjekartet og markørene. lys = lys bakgrunn (sporlinja tegnes da rød med hvit kant). */
+const TEMA = {
+  mork:  { lys: false, vann: "#1b5f86", skog: "#1a3123", stn: "#58c47a" },
+  gronn: { lys: true,  vann: "#9ccbe0", skog: "#c3dcc0", stn: "#2f7d4a" },
+  hvit:  { lys: true,  vann: "#c4def0", skog: "#e4ede1", stn: "#2f7d4a" }
 };
 
 const $ = id => document.getElementById(id);
@@ -40,6 +47,7 @@ function normaliser(o) {
   if (!s.retning || !Array.isArray(s.retning.tekster)) s.retning = { tekster: [] };
   if (!s.linje || !s.linje.kode) s.linje = klone(STANDARD.linje);
   if (!s.vaer || !isFinite(s.vaer.lat)) s.vaer = klone(STANDARD.vaer);
+  if (!TEMA[s.tema]) s.tema = "gronn";
   if (s.kart === "maptiler") s.kart = s.stil || "dataviz-dark";   // eldre lagrede valg
   return s;
 }
@@ -120,6 +128,8 @@ const MODUS_TXT = { rail: "tog", bus: "buss", tram: "trikk", metro: "T-bane", co
 
 /* ---------- Kart ---------- */
 const map = L.map("map");
+/* Egne lag i fast rekkefølge: sporlinje nederst, så øvrige stopp, så valgte stasjoner øverst. */
+[["pRute", 405], ["pStopp", 410], ["pStn", 415], ["pStoppTip", 640], ["pStnTip", 645]].forEach(([n, z]) => { map.createPane(n).style.zIndex = z; });
 map.setView([S.stasjoner[0].lat, S.stasjoner[0].lon], 13);
 const kv = "&copy; <a href='https://www.kartverket.no'>Kartverket</a>";
 const kartMork  = L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", { maxZoom: 18, attribution: kv, className: "mork" });
@@ -172,11 +182,11 @@ function lagMapTiler(stil) {
 function lagVannKart() {
   const key = hentNokkel();
   if (!key || !L.vectorGrid) return null;
-  const vann = "#1b5f86";
+  const vann = (TEMA[S.tema] || TEMA.gronn).vann, skogFarge = (TEMA[S.tema] || TEMA.gronn).skog;
   const skjul = { fill: false, stroke: false, weight: 0, opacity: 0 };
   const kjent = {
     landcover: p => (p.class === "wood" || p.class === "forest")
-      ? { fill: true, fillColor: "#1a3123", fillOpacity: 0.9, stroke: false } : { fill: false, stroke: false },
+      ? { fill: true, fillColor: skogFarge, fillOpacity: 0.9, stroke: false } : { fill: false, stroke: false },
     water: { fill: true, fillColor: vann, fillOpacity: 1, stroke: false },
     waterway: skjul   // senterlinjer i elver tegnes ikke, vannflatene er nok
   };
@@ -203,7 +213,7 @@ function velgKart(id) {
   else if (info.mt) { lag = mtCache[info.id] || (mtCache[info.id] = lagMapTiler(info.id)); }
   else if (info.id === "mork") lag = kartMork;
   else if (info.id === "farger") lag = kartFarger;
-  kartModus = info.id; kartLys = !!info.lys;
+  kartModus = info.id; kartLys = info.id === "linje" ? TEMA[S.tema].lys : !!info.lys;
   if (lag) { aktivtKart = lag; lag.addTo(map); if (lag.bringToBack) lag.bringToBack(); }
   $("btnMap").textContent = "Kart: " + info.navn.replace(/ \(.*\)$/, "");
   tegnLinjekartGrunn();
@@ -216,7 +226,7 @@ let neste = [];          // neste ankomst per stasjon
 let innstilte = [], avvik = [];
 let feil = { tid: null, veh: null, avvik: null, vaer: null, kart: null, rute: null };
 let sisteVehOk = null, lastVehicles = [], vMarkers = new Map(), showAll = false;
-let stnMarker = [];
+let stnMarker = [], sistTema = null, togNaVeh = null, togNaMal = null;
 let rute = null;         // { nokkel, geom, stopp }
 let ruteForsok = {};     // nøkkel -> tidspunkt, for å ikke spørre hele tiden
 let vehBbox = null, vehIngenModus = false;
@@ -237,13 +247,16 @@ function bruk() {
   lagStn.clearLayers(); lagStopp.clearLayers(); lagRute.clearLayers();
   for (const [, m] of vMarkers) map.removeLayer(m); vMarkers.clear();
   tileFeil = 0; tileOk = 0; feil.kart = null; feilKart = null;
+  togNaVeh = null; togNaMal = null;
+  document.body.dataset.tema = S.tema;
+  if (sistTema !== S.tema) { sistTema = S.tema; if (kartVann) { map.removeLayer(kartVann); } kartVann = undefined; }
 
   $("kort").innerHTML = S.stasjoner.map((s, i) =>
     `<div class="card"><div class="l">${esc(s.navn)}</div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div></div>`).join("");
 
   stnMarker = S.stasjoner.map((s, i) =>
-    L.circleMarker([s.lat, s.lon], { radius: 9, color: "#58c47a", weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStn)
-      .bindTooltip(esc(s.navn), { permanent: true, direction: i % 2 === 0 ? "right" : "left", offset: [i % 2 === 0 ? 12 : -12, 0], className: "stnLabel" }));
+    L.circleMarker([s.lat, s.lon], { pane: "pStn", radius: 9, color: TEMA[S.tema].stn, weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStn)
+      .bindTooltip(esc(s.navn), { permanent: true, direction: i % 2 === 0 ? "right" : "left", offset: [i % 2 === 0 ? 12 : -12, 0], className: "stnLabel", pane: "pStnTip" }));
 
   const bs = L.latLngBounds(S.stasjoner.map(s => [s.lat, s.lon]));
   if (S.stasjoner.length > 1 && bs.getSouthWest().distanceTo(bs.getNorthEast()) > 200) map.fitBounds(bs, { padding: [160, 160], maxZoom: 14 });
@@ -273,8 +286,8 @@ function tegnLinjekartGrunn() {
   else if (rute && rute.stopp && rute.stopp.length > 1) g = glatt(rute.stopp.map(x => [x.lat, x.lon]), 3);   // reserve: glattet linje gjennom stoppene
   if (!g) return;
   const kant = kartLys ? "#ffffff" : "#58c47a", kjerne = kartLys ? "#b42318" : "#8fe3ad";
-  L.polyline(g, { color: kant, weight: kartLys ? 8 : 10, opacity: kartLys ? 0.9 : 0.18, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
-  L.polyline(g, { color: kjerne, weight: 3, opacity: 0.95, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
+  L.polyline(g, { pane: "pRute", color: kant, weight: kartLys ? 8 : 10, opacity: kartLys ? 0.9 : 0.18, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
+  L.polyline(g, { pane: "pRute", color: kjerne, weight: 3, opacity: 0.95, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
 }
 
 /* ---------- Ankomsttider ---------- */
@@ -362,8 +375,8 @@ async function hentRute(sjId) {
   dbg(`Rute: ${stopp.length} stopp, geometri ${geom ? geom.length + " punkter" : "ingen (bruker strek mellom stopp)"}`);
   lagStopp.clearLayers();
   stopp.filter(x => !S.stasjoner.some(s => km(s.lat, s.lon, x.lat, x.lon) < 0.25)).forEach(x => {
-    L.circleMarker([x.lat, x.lon], { radius: 6, color: "#58c47a", weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStopp)
-      .bindTooltip(esc(x.navn), { permanent: true, direction: "top", offset: [0, -6], className: "stnSmall" });
+    L.circleMarker([x.lat, x.lon], { pane: "pStopp", radius: 6, color: TEMA[S.tema].stn, weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStopp)
+      .bindTooltip(esc(x.navn), { permanent: true, direction: "top", offset: [0, -6], className: "stnSmall", pane: "pStoppTip" });
   });
   tegnLinjekartGrunn();
   // Utvid søkeområdet for posisjoner til å dekke hele ruta
@@ -457,12 +470,12 @@ async function hentVaer() {
       return { tid: dagTxt + hhmm(tt), kode: sym ? sym.symbol_code : "", temp: Math.round(det.air_temperature), nedb, vind: Math.round(det.wind_speed) };
     });
     const nb = n => n == null ? "" : n > 0 ? String(Math.round(n * 10) / 10).replace(".", ",") : "–";
-    const rekke = (navn, f) => `<tr><td class="k">${navn}</td>${kol.map(f).join("")}</tr>`;
+    const rekke = (navn, f) => `<tr><td class="k"></td>${kol.map(f).join("")}</tr>`;
     $("weather").innerHTML = `<table id="wTab"><tr><th class="k">${esc(mitt.vaer.navn)}</th>${kol.map(k => `<th>${esc(k.tid)}</th>`).join("")}</tr>` +
       rekke("", k => `<td><img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(k.kode)}.svg" onerror="this.style.display='none'"></td>`) +
-      rekke("Temp", k => `<td class="tmp">${k.temp}&deg;</td>`) +
-      rekke("Nedbør mm", k => `<td class="nb">${nb(k.nedb)}</td>`) +
-      rekke("Vind m/s", k => `<td>${k.vind}</td>`) + `</table>`;
+      rekke("", k => `<td class="tmp">${k.temp}&deg;</td>`) +
+      rekke("", k => `<td class="nb">${nb(k.nedb)}</td>`) +
+      rekke("", k => `<td>${k.vind}</td>`) + `</table>`;
     feil.vaer = null; dbg(`Vær OK (${mitt.vaer.navn}): ${vis.length} tidspunkt`);
   } catch (e) { feil.vaer = e.message; dbg("VÆR FEIL: " + e.message); $("weather").textContent = "Værmelding utilgjengelig"; }
   tegnStatus();
@@ -491,9 +504,28 @@ function vehQuery(medModus, bb) {
     location { latitude longitude }
   } }`;
 }
+const TOG_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5" fill="currentColor"/><rect x="7.5" y="5" width="9" height="5.5" rx="1.2" fill="#f2b705"/><circle cx="8.8" cy="14" r="1.3" fill="#f2b705"/><circle cx="15.2" cy="14" r="1.3" fill="#f2b705"/><path d="M8.5 17.5 6.5 21.5M15.5 17.5 17.5 21.5M4.5 21.5h15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
 function ikon(v, hoved) {
   const kode = (v.line && v.line.publicCode) || "";
-  return L.divIcon({ className: "", iconSize: [34, 34], iconAnchor: [17, 17], html: `<div class="trainIcon ${hoved ? "" : "other"}">${esc(kode)}</div>` });
+  return L.divIcon({ className: "", iconSize: [38, 38], iconAnchor: [19, 19], html: `<div class="trainIcon ${hoved ? "" : "other"}">${TOG_SVG}${kode ? `<span class="kode">${esc(kode)}</span>` : ""}</div>` });
+}
+/* Hvor er toget nå? Bruker stoppene på ruta når de er hentet. */
+function posTekst(v, mal) {
+  const la = v.location.latitude, lo = v.location.longitude;
+  const st = rute && rute.stopp;
+  if (!st || st.length < 2) return `${km(la, lo, mal.lat, mal.lon).toFixed(1).replace(".", ",")} km fra ${mal.navn}`;
+  let bi = 0, bd = 1e9;
+  st.forEach((x, i) => { const d = km(la, lo, x.lat, x.lon); if (d < bd) { bd = d; bi = i; } });
+  if (bd < 0.7) return "ved " + st[bi].navn;
+  const fo = st[bi - 1], ne = st[bi + 1];
+  const j = !fo ? bi + 1 : !ne ? bi - 1 : (km(la, lo, fo.lat, fo.lon) < km(la, lo, ne.lat, ne.lon) ? bi - 1 : bi + 1);
+  return `mellom ${st[Math.min(bi, j)].navn} og ${st[Math.max(bi, j)].navn}`;
+}
+function tegnTogNa() {
+  const el = $("togNa"); if (!el) return;
+  if (feil.veh && !sisteVehOk) el.textContent = "posisjon utilgjengelig";
+  else if (!sisteVehOk) el.textContent = "henter posisjon ...";
+  else el.textContent = togNaVeh ? "nå " + posTekst(togNaVeh, togNaMal) : "ikke startet enda";
 }
 function oppdaterKart(vs) {
   const hovedtog = vs.filter(v => erLinje(v) && mot(v));
@@ -518,6 +550,7 @@ function oppdaterKart(vs) {
     const passert = a != null && vinkelDiff(kurs(v.location.latitude, v.location.longitude, mal.lat, mal.lon), a) > 90;
     return { v, d, passert };
   }).filter(k => !k.passert).sort((p, q) => p.d - q.d);
+  togNaVeh = kand[0] ? kand[0].v : null; togNaMal = mal; tegnTogNa();
   if (kand[0] && !showAll) map.panInside([kand[0].v.location.latitude, kand[0].v.location.longitude], { padding: [90, 90] });
   return hovedtog.length;
 }
@@ -541,6 +574,7 @@ async function hentPosisjoner() {
 }
 
 function tegnStatus() {
+  tegnTogNa();
   const navn = { tid: "Ankomsttider", veh: "Posisjon", avvik: "Avvik", vaer: "Vær", kart: "Kart", rute: "Rute" };
   const f = Object.assign({}, feil, { kart: feilKart });
   const liste = Object.keys(f).filter(k => f[k]).map(k => `${navn[k]}: ${esc(f[k])}`);
@@ -646,6 +680,7 @@ function fyllKartValg() {
 }
 function apneInnstillinger() {
   U = klone(S); kandidater = [];
+  $("temaValg").value = TEMA[U.tema] ? U.tema : "gronn";
   try { fyllKartValg(); $("kartType").value = tilgjengeligeKart().includes(U.kart) ? U.kart : "linje"; } catch (e) { dbg("Kartvalg: " + e.message); }
   $("keyInn").value = (() => { try { return localStorage.getItem("togskjerm.key") || ""; } catch (e) { return ""; } })();
   $("linjeInfo").textContent = ""; melding("");
@@ -670,19 +705,19 @@ $("vaerSok").oninput = debounce(() => sokSteder($("vaerSok"), $("vaerTreff"), fa
 $("dlgSave").onclick = () => {
   if (!U.stasjoner.length) { melding("Velg minst én stasjon."); return; }
   if (!U.linje || !U.linje.kode) { melding("Velg linje."); return; }
-  U.kart = $("kartType").value;
+  U.kart = $("kartType").value; U.tema = $("temaValg").value;
   try { const k = $("keyInn").value.trim(); if (k) localStorage.setItem("togskjerm.key", k); else localStorage.removeItem("togskjerm.key"); } catch (e) {}
   S = normaliser(U); lagreInnstillinger(S);
   Object.keys(mtCache).forEach(k => delete mtCache[k]); kartVann = undefined;   // bygg om kartlagene (ny nøkkel)
   vehIngenModus = false; rute = null; lukk(); bruk();
 };
 $("dlgLink").onclick = async () => {
-  U.kart = $("kartType").value;
+  U.kart = $("kartType").value; U.tema = $("temaValg").value;
   const l = delingsLenke(normaliser(U));
   try { await navigator.clipboard.writeText(l); melding("Lenken er kopiert. Din MapTiler-nøkkel er ikke med i lenken."); }
   catch (e) { window.prompt("Kopier lenken:", l); }
 };
-$("dlgReset").onclick = () => { U = klone(STANDARD); kandidater = []; tegnStn(); tegnLinjer(); tegnVaerValgt(); fyllKartValg(); $("kartType").value = U.kart; melding("Standardoppsett valgt. Trykk Lagre."); };
+$("dlgReset").onclick = () => { U = klone(STANDARD); kandidater = []; tegnStn(); tegnLinjer(); tegnVaerValgt(); fyllKartValg(); $("kartType").value = U.kart; $("temaValg").value = U.tema; melding("Standardoppsett valgt. Trykk Lagre."); };
 $("dlgDbg").onclick = () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; };
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) lukk(); });
 

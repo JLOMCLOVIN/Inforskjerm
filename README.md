@@ -46,13 +46,15 @@ Trykk tannhjulet øverst til høyre. Der ligger knappene Kart, Alle, Fullskjerm 
 1. Stasjoner eller holdeplasser (opptil tre).
 2. Linje og retning. Trykk «Finn linjer», velg linje og kryss av for destinasjonen toget skal gå mot.
 3. Sted for værmeldingen.
-4. Kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
+4. Utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
 
 Valgene lagres i nettleseren. «Kopier lenke» lager en lenke som setter opp samme visning for andre. Nøkkelen din er ikke med i lenken.
 
 For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la nettleseren stå.
 
-Værmeldingen vises som en tabell med temperatur, nedbør (mm) og vind (m/s) for åtte tidspunkt. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
+Over stasjonskortene står «Neste tog» og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»).
+
+Værmeldingen vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, uten tekstetiketter. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
 
 ## Kjente forbehold
 

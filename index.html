@@ -6,53 +6,69 @@
 <title>Togskjerm</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
-  :root { --bg:#0f1b14; --panel:#16261c; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; }
+  :root { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b;
+    --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --nb:#7fb8ff; --inp:#0f1b14;
+    --avbg:#2b1f12; --avln:#4a3820; --stnbg:#1b5e35; --stnbr:#58c47a; --stntid:#f2b705;
+    --smbg:rgba(20,35,26,.85); --smt:#dfeee4; --smbd:#3d7a55; --mapbg:radial-gradient(ellipse at 50% 40%, #16281e 0%, #0b140f 75%); --shadow:rgba(0,0,0,.5); }
+  body[data-tema="gronn"] { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b;
+    --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --nb:#1d5fb0; --inp:#ffffff;
+    --avbg:#fdf1dc; --avln:#e6cf9f; --stnbg:#2f7d4a; --stnbr:#ffffff; --stntid:#ffe08a;
+    --smbg:rgba(255,255,255,.88); --smt:#1f3a28; --smbd:#7fb58c; --mapbg:#dcebd8; --shadow:rgba(30,60,40,.25); }
+  body[data-tema="hvit"] { --bg:#ffffff; --panel:#f3f5f3; --card:#ffffff; --cardb:#dde3de; --text:#1c2420; --muted:#66736b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b;
+    --btn:#ffffff; --btnb:#cdd5cf; --btnh:#edf0ed; --prim:#2f7d4a; --primb:#1f5c35; --nb:#1d5fb0; --inp:#ffffff;
+    --avbg:#fdf3e2; --avln:#ead9b4; --stnbg:#2a7048; --stnbr:#ffffff; --stntid:#ffe08a;
+    --smbg:rgba(255,255,255,.92); --smt:#2a3a30; --smbd:#b5c4ba; --mapbg:#f6f7f5; --shadow:rgba(0,0,0,.18); }
   * { box-sizing:border-box; }
   html,body { height:100%; margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif; font-weight:300; }
   #app { display:flex; flex-direction:column; height:100vh; height:100dvh; }
   header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:8px 12px; background:var(--panel); position:relative; z-index:1200; }
+  #kortWrap { display:flex; flex-direction:column; }
+  .kh { font-size:12px; color:var(--muted); font-weight:400; margin-bottom:3px; white-space:nowrap; }
+  .kh b { color:var(--text); font-weight:600; text-transform:uppercase; letter-spacing:.08em; font-size:11px; }
   #kort { display:flex; gap:8px; }
-  .card { background:#1d3326; border-radius:10px; padding:5px 12px; min-width:128px; }
+  .card { background:var(--card); border:1px solid var(--cardb); border-radius:10px; padding:5px 12px; min-width:128px; }
   .card .l { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-weight:400; }
   .card .t { font-size:34px; font-weight:300; line-height:1.05; letter-spacing:-.5px; }
   .card .s { font-size:12px; color:var(--muted); min-height:16px; font-weight:400; }
   .card .s .late { color:var(--bad); font-weight:600; } .card .s .ontime { color:var(--ok); font-weight:600; }
-  #weather { background:#1d3326; border-radius:10px; padding:4px 8px; font-size:12px; color:var(--muted); }
+  #weather { background:var(--card); border-radius:10px; padding:4px 8px; font-size:12px; color:var(--muted); }
   #wTab { border-collapse:collapse; font-size:12px; }
   #wTab td, #wTab th { padding:1px 7px; text-align:center; font-weight:300; white-space:nowrap; color:var(--text); }
   #wTab th { font-weight:400; color:var(--muted); font-size:11px; }
   #wTab td.k, #wTab th.k { text-align:left; color:var(--muted); font-size:11px; font-weight:400; padding-left:0; }
   #wTab img { width:24px; height:24px; vertical-align:middle; }
   #wTab .tmp { font-size:15px; font-weight:400; }
-  #wTab .nb { color:#7fb8ff; }
+  #wTab .nb { color:var(--nb); }
   .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
   #status { font-size:11px; color:var(--muted); text-align:right; max-width:260px; line-height:1.3; font-weight:400; }
   #status b.ok { color:var(--ok); } #status b.bad { color:var(--bad); }
-  button { background:#24402f; color:var(--text); border:1px solid #35573f; border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; white-space:nowrap; font-family:inherit; font-weight:400; }
-  button:hover { background:#2d5139; }
-  button.primary { background:#2f7d4a; border-color:#58c47a; }
+  button { background:var(--btn); color:var(--text); border:1px solid var(--btnb); border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; white-space:nowrap; font-family:inherit; font-weight:400; }
+  button:hover { background:var(--btnh); }
+  button.primary { color:#fff; background:var(--prim); border-color:var(--primb); }
   #btnGear { width:38px; height:38px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; }
-  #meny { display:none; position:absolute; top:calc(100% + 4px); right:12px; z-index:1300; flex-direction:column; gap:6px; background:#16261c; border:1px solid #35573f; border-radius:12px; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,.5); min-width:190px; }
+  #meny { display:none; position:absolute; top:calc(100% + 4px); right:12px; z-index:1300; flex-direction:column; gap:6px; background:var(--panel); border:1px solid var(--btnb); border-radius:12px; padding:8px; box-shadow:0 8px 24px var(--shadow); min-width:190px; }
   #meny.vis { display:flex; }
   #meny button { text-align:left; width:100%; }
-  #avvik { padding:0 16px; background:#2b1f12; }
+  #avvik { padding:0 16px; background:var(--avbg); }
   #avvik:empty { display:none; }
-  #avvik .a { padding:8px 0; border-bottom:1px solid #4a3820; font-size:15px; }
+  #avvik .a { padding:8px 0; border-bottom:1px solid var(--avln); font-size:15px; }
   #avvik .a:last-child { border-bottom:0; }
   #avvik .a b { color:var(--accent); }
   #avvik .a.innstilt b { color:var(--bad); }
   #avvik .a .d { color:var(--muted); font-size:13px; display:block; }
   #map { flex:1; min-height:0; }
-  #map.leaflet-container { background:radial-gradient(ellipse at 50% 40%, #16281e 0%, #0b140f 75%); }
+  #map.leaflet-container { background:var(--mapbg); }
   .mork { filter:invert(1) hue-rotate(170deg) brightness(.82) contrast(.95) saturate(.6); }
-  .trainIcon { width:34px; height:34px; border-radius:50%; background:var(--accent); border:3px solid #fff; display:flex; align-items:center; justify-content:center; color:#10200f; font-weight:800; font-size:11px; animation:puls 2s infinite; }
+  .trainIcon { position:relative; width:38px; height:38px; border-radius:50%; background:var(--accent2,#f2b705); border:3px solid #fff; display:flex; align-items:center; justify-content:center; color:#10200f; animation:puls 2s infinite; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  .trainIcon svg { width:24px; height:24px; }
+  .trainIcon .kode { position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); background:#10200f; color:#fff; border-radius:8px; padding:0 5px; font-size:10px; font-weight:700; line-height:14px; white-space:nowrap; }
   @keyframes puls { 0% { box-shadow:0 0 0 0 rgba(242,183,5,.7); } 70% { box-shadow:0 0 0 18px rgba(242,183,5,0); } 100% { box-shadow:0 0 0 0 rgba(242,183,5,0); } }
-  .trainIcon.other { background:#7d8f82; opacity:.8; animation:none; }
-  .stnLabel { background:#1b5e35; color:#fff; border:2px solid #58c47a; font-weight:600; font-size:14px; line-height:1.2; padding:2px 8px; border-radius:8px; text-align:center; }
+  .trainIcon.other { background:#7d8f82; opacity:.85; animation:none; }
+  .stnLabel { background:var(--stnbg); color:#fff; border:2px solid var(--stnbr); font-weight:600; font-size:14px; line-height:1.2; padding:2px 8px; border-radius:8px; text-align:center; }
   .stnLabel:before { display:none; }
-  .stnLabel .tid { font-size:20px; font-weight:300; color:var(--accent); }
+  .stnLabel .tid { font-size:20px; font-weight:300; color:var(--stntid); }
   .stnLabel .fs { font-size:11px; font-weight:400; }
-  .stnSmall { background:rgba(20,35,26,.85); color:#dfeee4; border:1px solid #3d7a55; font-weight:400; font-size:12px; padding:1px 5px; border-radius:4px; }
+  .stnSmall { background:var(--smbg); color:var(--smt); border:1px solid var(--smbd); font-weight:400; font-size:12px; padding:1px 5px; border-radius:4px; }
   .stnSmall:before { display:none; }
   #map.zoomedOut .stnSmall { display:none; }
   #debug { display:none; position:absolute; z-index:1000; left:10px; bottom:10px; max-width:80%; max-height:40%; overflow:auto; background:rgba(0,0,0,.85); color:#cfe; font:12px/1.4 monospace; padding:8px 10px; border-radius:8px; white-space:pre-wrap; }
@@ -62,7 +78,7 @@
     header { padding:6px 8px; gap:6px; }
     .right { order:-1; width:100%; justify-content:space-between; }
     #status { text-align:left; max-width:none; flex:1; }
-    #kort { width:100%; }
+    #kortWrap { width:100%; }
     .card { flex:1; min-width:0; padding:4px 10px; }
     .card .t { font-size:30px; }
     #weather { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -75,18 +91,18 @@
   /* Innstillinger */
   #dlg { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:20px; }
   #dlg.vis { display:flex; }
-  .box { background:#16261c; border:1px solid #35573f; border-radius:14px; width:min(720px,100%); padding:18px 22px; }
+  .box { background:var(--panel); border:1px solid var(--btnb); border-radius:14px; width:min(720px,100%); padding:18px 22px; }
   .box h2 { margin:0 0 6px; } .box h3 { margin:18px 0 6px; font-size:15px; color:var(--accent); }
-  .box input[type=text], .box select { width:100%; padding:8px 10px; border-radius:8px; border:1px solid #35573f; background:#0f1b14; color:var(--text); font-size:15px; font-family:inherit; }
+  .box input[type=text], .box select { width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--btnb); background:var(--inp); color:var(--text); font-size:15px; font-family:inherit; }
   .hint { font-size:12px; color:var(--muted); margin:4px 0; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
-  .chip { background:#24402f; border-radius:16px; padding:4px 6px 4px 12px; font-size:14px; }
+  .chip { background:var(--btn); border-radius:16px; padding:4px 6px 4px 12px; font-size:14px; }
   .chip button { padding:0 6px; border:0; background:transparent; font-size:16px; color:var(--bad); }
-  .treff div { padding:7px 10px; border-bottom:1px solid #24402f; cursor:pointer; font-size:14px; }
-  .treff div:hover { background:#24402f; }
+  .treff div { padding:7px 10px; border-bottom:1px solid var(--btn); cursor:pointer; font-size:14px; }
+  .treff div:hover { background:var(--btn); }
   .treff small { color:var(--muted); }
   .ln { display:block; padding:6px 4px; font-size:15px; }
-  .dest { margin:0 0 8px 26px; padding-left:10px; border-left:2px solid #35573f; }
+  .dest { margin:0 0 8px 26px; padding-left:10px; border-left:2px solid var(--btnb); }
   .dest label { display:block; padding:3px 0; font-size:14px; }
   .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
   .row > * { flex:1; min-width:150px; }
@@ -96,7 +112,7 @@
 <body>
 <div id="app">
   <header>
-    <div id="kort"></div>
+    <div id="kortWrap"><div class="kh"><b>Neste tog</b> · <span id="togNa">henter posisjon ...</span></div><div id="kort"></div></div>
     <div id="weather">Henter vær ...</div>
     <div class="right">
       <div id="status">Starter ...</div>
@@ -134,7 +150,8 @@
     <input type="text" id="vaerSok" placeholder="Søk etter sted, f.eks. Oslo" autocomplete="off">
     <div class="treff" id="vaerTreff"></div>
 
-    <h3>4. Kart</h3>
+    <h3>4. Utseende og kart</h3>
+    <div class="row"><select id="temaValg"><option value="gronn">Lys grønn</option><option value="hvit">Hvit</option><option value="mork">Mørk</option></select></div>
     <div class="row"><select id="kartType"></select></div>
     <div class="row"><input type="text" id="keyInn" placeholder="MapTiler API-nøkkel (lagres bare i denne nettleseren)" autocomplete="off"></div>
     <div class="hint">Har du lagt nøkkelen i config.js trenger du ikke fylle den inn her. Linjekartet tegner hav, innsjøer og elver når nøkkelen finnes. Knappen «Kart» på hovedsiden blar gjennom alle variantene.</div>
@@ -152,7 +169,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.min.js"></script>
-<script src="config.js?v=4"></script>
-<script src="app.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>
