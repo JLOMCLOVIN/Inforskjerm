@@ -289,9 +289,13 @@ function tegnLinjekartGrunn() {
 }
 
 /* ---------- Ankomsttider ---------- */
+/* Ser opptil en uke fram, så neste avgang vises også når dagens siste har gått (f.eks. rushtog som bare går på hverdager).
+   Høyst 6 avganger per linje og destinasjon, og bare valgt transporttype, så svaret holder seg lite. */
+const MODUSER = ["rail", "bus", "tram", "metro", "coach", "water"];
 function ankomstQuery(id) {
+  const modus = MODUSER.includes(S.linje.modus) ? `, whiteListedModes: [${S.linje.modus}]` : "";
   return `{ stopPlace(id: "${id}") {
-    estimatedCalls(numberOfDepartures: 100, timeRange: 86400, arrivalDeparture: both) {
+    estimatedCalls(numberOfDepartures: 200, timeRange: 604800, arrivalDeparture: both, numberOfDeparturesPerLineAndDestinationDisplay: 6${modus}) {
       realtime cancellation
       aimedArrivalTime expectedArrivalTime aimedDepartureTime expectedDepartureTime
       destinationDisplay { frontText }
@@ -335,13 +339,23 @@ async function hentAnkomster() {
     if (mitt !== S) return;          // innstillinger endret underveis
     neste = nye; motsatt = nyeMot; etter = nyeEtter; innstilte = nyeInnstilte; feil.tid = null;
     const forste = neste.find(n => n);
-    if (forste) hentRute(forste.sj);
+    if (forste) hentRute(forste.sj, dagStr(forste.aimed));
     hentTogPos();
   } catch (e) { feil.tid = e.message; dbg("RUTETID FEIL: " + e.message); }
   tegnKort(); tegnAvvik(); tegnStatus();
 }
 /* Når må man gå? Bruker gangtiden for stasjonen. Løping antas å ta omtrent 60 % av gangtiden. */
 const LOPEFAKTOR = 0.6;
+/* «i morgen», «i overmorgen» eller ukedag og dato når avgangen ikke er i dag */
+function dagForskjell(d) { return Math.round((Date.parse(dagStr(new Date(d))) - Date.parse(dagStr(new Date()))) / 86400000); }
+function dagEtikett(d) {
+  const n = dagForskjell(d);
+  if (n <= 0) return "";
+  if (n === 1) return "i morgen";
+  if (n === 2) return "i overmorgen";
+  return new Date(d).toLocaleDateString("nb-NO", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Oslo" });
+}
+const medDag = d => { const e = dagEtikett(d); return (e ? e + " " : "") + hhmm(d); };
 function tegnGange(i, s, n) {
   const el = $("g" + i); if (!el) return;
   const gang = s.gang || 0;
@@ -351,7 +365,8 @@ function tegnGange(i, s, n) {
   let kl = "g", txt;
   if (slakk >= 0) {
     const m = Math.floor(slakk / 60000);
-    if (m >= 15) { kl += " rolig"; txt = `Gå kl <b>${hhmm(new Date(n.expected - gangMs))}</b> (om ${m} min)`; }
+    const gaa = new Date(n.expected - gangMs), dg = dagEtikett(gaa);
+    if (m >= 15) { kl += " rolig"; txt = `Gå ${dg ? dg + " " : ""}kl <b>${hhmm(gaa)}</b>${m < 120 ? ` (om ${m} min)` : ""}`; }
     else if (m >= 1) { kl += " snart"; txt = `Gå om <b>${m} min</b>`; }
     else { kl += " naa"; txt = "<b>Gå nå!</b>"; }
   } else if (-slakk <= gangMs * (1 - LOPEFAKTOR)) {
@@ -359,7 +374,7 @@ function tegnGange(i, s, n) {
   } else {
     const e = etter[i];
     kl += " sen";
-    txt = e ? `Rekker ikke. Neste <b>${hhmm(e.expected)}</b>, gå kl ${hhmm(new Date(e.expected - gangMs))}` : "Rekker ikke dette toget";
+    txt = e ? `Rekker ikke. Neste <b>${medDag(e.expected)}</b>, gå kl ${hhmm(new Date(e.expected - gangMs))}` : "Rekker ikke dette toget";
   }
   el.className = kl; el.innerHTML = txt;
 }
@@ -386,33 +401,35 @@ function tegnKort() {
     const t = $("t" + i), sub = $("s" + i), n = neste[i], mo = motsatt[i], me = $("m" + i);
     if (me) {
       if (!S.retning.tekster.length) me.textContent = "";
-      else if (!mo) me.textContent = "Motsatt vei: ingen flere i dag";
+      else if (!mo) me.textContent = "Motsatt vei: ingen den neste uka";
       else { const fm = Math.round((mo.expected - mo.aimed) / 60000);
-        me.innerHTML = `Motsatt<span class="vei"> vei</span> <b>${hhmm(mo.expected)}</b>${mo.dest ? " mot " + esc(mo.dest) : ""}${mo.realtime && fm >= 1 ? ` <span class="late">+${fm}</span>` : ""}`; }
+        me.innerHTML = `Motsatt<span class="vei"> vei</span> <b>${medDag(mo.expected)}</b>${mo.dest ? " mot " + esc(mo.dest) : ""}${mo.realtime && fm >= 1 ? ` <span class="late">+${fm}</span>` : ""}`; }
     }
     if (!t || !stnMarker[i]) return;
     tegnGange(i, s, n);
-    if (!n) { t.textContent = "-"; sub.textContent = "Ingen flere avganger i dag"; stnMarker[i].setTooltipContent(esc(s.navn)); return; }
+    if (!n) { t.textContent = "-"; sub.textContent = "Ingen avganger den neste uka"; stnMarker[i].setTooltipContent(esc(s.navn)); return; }
     const min = Math.round((n.expected - naa) / 60000);
     const forsink = Math.round((n.expected - n.aimed) / 60000);
     t.textContent = hhmm(n.expected);
-    const om = min <= 0 ? "nå" : min === 1 ? "om 1 min" : "om " + min + " min";
+    const dag = dagEtikett(n.expected);
+    const om = dag ? `<b class="dag">${esc(dag)}</b>` : min <= 0 ? "nå" : min === 1 ? "om 1 min" : min < 90 ? "om " + min + " min" : `om ${Math.floor(min / 60)} t ${min % 60} min`;
     const fs = !n.realtime ? "<span>ruteplan</span>" : forsink >= 1 ? `<span class="late">+${forsink} min</span>` : `<span class="ontime">i rute</span>`;
     sub.innerHTML = `${om} · ${fs}`;
     const fk = !n.realtime ? "ruteplan" : forsink >= 1 ? `+${forsink} min` : "i rute";
-    stnMarker[i].setTooltipContent(`${esc(s.navn)}<br><span class="tid">${hhmm(n.expected)}</span><br><span class="fs">${fk}</span>`);
+    stnMarker[i].setTooltipContent(`${esc(s.navn)}<br>${dag ? `<span class="fs">${esc(dag)}</span><br>` : ""}<span class="tid">${hhmm(n.expected)}</span><br><span class="fs">${fk}</span>`);
   });
 }
 
 /* ---------- Rute og øvrige stopp (fra en avgang på linja) ---------- */
-async function hentRute(sjId) {
+async function hentRute(sjId, dato) {
   const nokkel = JSON.stringify([S.stasjoner.map(s => s.id), S.linje, S.retning.tekster]);
   if (rute && rute.nokkel === nokkel) return;
   if (ruteForsok[nokkel] && Date.now() - ruteForsok[nokkel] < 10 * 60000) return;
   ruteForsok[nokkel] = Date.now();
   const mitt = S;
-  const full = `{ serviceJourney(id: "${sjId}") { pointsOnLink { points } estimatedCalls { quay { name latitude longitude } } } }`;
-  const enkel = `{ serviceJourney(id: "${sjId}") { estimatedCalls { quay { name latitude longitude } } } }`;
+  const dg = dato ? `(date: "${dato}")` : "";      // turen kan gå en annen dag enn i dag
+  const full = `{ serviceJourney(id: "${sjId}") { pointsOnLink { points } estimatedCalls${dg} { quay { name latitude longitude } } } }`;
+  const enkel = `{ serviceJourney(id: "${sjId}") { estimatedCalls${dg} { quay { name latitude longitude } } } }`;
   let d = null;
   try { d = await gql(URL_JP, full); }
   catch (e1) {
@@ -601,7 +618,7 @@ function nesteTog() {   // toget som kommer først til en av de valgte stasjonen
 async function hentTogPos() {
   const n = nesteTog(), mitt = S;
   if (!n) { togPos = null; tegnTogNa(); return; }
-  const q = full => `{ serviceJourney(id: "${n.sj}") { estimatedCalls { quay { name } cancellation
+  const q = full => `{ serviceJourney(id: "${n.sj}") { estimatedCalls(date: "${dagStr(n.aimed)}") { quay { name } cancellation
     aimedArrivalTime expectedArrivalTime aimedDepartureTime expectedDepartureTime ${full ? "actualArrivalTime actualDepartureTime" : ""} } } }`;
   try {
     let d;
