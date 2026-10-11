@@ -210,7 +210,7 @@ function kort(r, i) {
         <div class="fremme">${forste.fremme ? `Fremme <b>${hhmm(forste.fremme)}</b>${reise != null ? ` · ${forste.anslatt ? "ca. " : ""}${reise} min` : ""}` : ""}</div>
       </div></div>`;
   }
-  const resten = D.liste.slice(1, 5).map(d => `<span class="${g && g.d === d ? "maal" : ""}${d.x ? " xx" : ""}">${hhmm(d.e)}${d.x ? "" : forsinkelse(d) ? " " + forsinkelse(d) : ""}${d.flyttet ? ` <span class="nyplf">${esc(m.plf.toLowerCase())} ${esc(d.plf)}</span>` : ""}</span>`).join("");
+  const resten = D.liste.slice(1, 5).map(d => `<span class="${g && g.d === d ? "maal" : ""}${d.x ? " xx" : ""}">${hhmm(d.e)}${d.x ? "" : forsinkelse(d) ? " " + forsinkelse(d) : ""}</span>`).join("");
   return `<article class="rk" style="--lf:${lf};--lt:${lt}">
     <div class="topp">
       <button class="lbx" data-r="${i}" title="Endre ruter"><span class="ik">${IKON[r.linje.modus] || IKON.bus}</span>${esc(r.linje.kode)}</button>
@@ -226,8 +226,9 @@ function kort(r, i) {
       </div>
     </div>
     ${hoved}
-    ${gangHtml || resten ? `<div class="neste">${resten ? `<span class="k">Deretter</span>${resten}` : ""}${gangHtml}</div>` : ""}
+    <div class="neste">${resten ? `<span class="k">Deretter</span>${resten}` : ""}</div>
     ${D.avvik.length ? `<div class="avvik">${D.avvik.map(esc).join("<br>")}</div>` : ""}
+    ${S.ruter.some(x => x.gang) ? `<div class="gangrad">${gangHtml}</div>` : ""}
   </article>`;
 }
 function tegn() {

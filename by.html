@@ -49,11 +49,15 @@
   .akse { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); font-weight:400; margin-top:1px; }
   .v90tekst { display:flex; flex-direction:column; font-size:12px; color:var(--muted); font-weight:400; line-height:1.3; min-width:0; }
   .v90tekst b { color:var(--text); font-size:14px; font-weight:600; }
-  section h2 { font-size:15px; font-weight:600; color:var(--text); margin:10px 2px 6px; }
+  /* Hver gruppe i en egen ramme med svak bakgrunn, så det er tydelig hva som hører sammen */
+  main.grupper section { background:var(--panel); border:1px solid var(--btnb); border-radius:14px; padding:6px 10px 10px; display:flex; flex-direction:column; }
+  main.grupper section .rutenett { flex:1; }
+  section h2 { font-size:16px; font-weight:600; color:var(--text); margin:2px 4px 8px; }
+  section h2 .pil2 { color:var(--muted); font-weight:400; margin-right:4px; }
   /* Hele bredden brukes: grupper legges ved siden av hverandre når de får plass, og kortene strekkes til å fylle raden */
   .rutenett { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap:10px; }
-  main.grupper { display:flex; flex-wrap:wrap; gap:4px 16px; align-items:flex-start; }
-  main.grupper section { flex:var(--n) 1 calc(var(--n) * 290px + (var(--n) - 1) * 10px); min-width:min(100%, 290px); }
+  main.grupper { display:flex; flex-wrap:wrap; gap:12px 14px; align-items:stretch; }
+  main.grupper section { flex:var(--n) 1 calc(var(--n) * 290px + (var(--n) - 1) * 10px + 22px); min-width:min(100%, 290px); }
 
   .rk { background:var(--card); border:1px solid var(--cardb); border-left:6px solid var(--lf); border-radius:12px; padding:9px 12px 9px 12px; display:flex; flex-direction:column; gap:3px; min-width:0; }
   .topp { display:flex; align-items:center; gap:10px; }
@@ -93,11 +97,13 @@
   .hoved.innstilt .om, .hoved.innstilt .tid { text-decoration:line-through; color:var(--muted); }
   .late { color:var(--bad); font-weight:600; } .x { color:var(--bad); font-weight:600; text-decoration:none; display:inline-block; }
   .rp { color:var(--muted); font-size:11px; font-weight:400; }
-  .neste { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; font-size:13px; font-weight:400; border-top:1px dashed var(--btnb); padding-top:4px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .neste { display:flex; flex-wrap:wrap; overflow:hidden; white-space:nowrap; align-items:center; gap:0 12px; height:23px; line-height:19px; font-size:13px; font-weight:400; border-top:1px dashed var(--btnb); padding-top:4px; margin-top:2px; font-variant-numeric:tabular-nums; }
   .neste .k { color:var(--muted); }
   .neste .maal { font-weight:700; text-decoration:underline; text-decoration-color:var(--lf); text-decoration-thickness:2px; text-underline-offset:3px; }
   .neste .xx { text-decoration:line-through; color:var(--muted); }
-  .avvik.flytt { border-left-color:var(--bad); }
+  .gangrad { display:flex; justify-content:flex-end; margin-top:auto; padding-top:3px; }
+  .gangrad:empty { display:none; }
+  .gangrad .gang { margin-left:0; }
   .avvik { font-size:12px; background:var(--avbg); border-left:3px solid var(--accent); padding:3px 7px; border-radius:4px; font-weight:400; margin-top:2px; }
   .tom, .tomside { color:var(--muted); font-size:14px; padding:6px 0; }
   .tomside { text-align:center; padding:60px 0; }
@@ -191,6 +197,6 @@
 
 <script src="config.js?v=8"></script>
 <script src="by-demo.js?v=2"></script>
-<script src="by.js?v=9"></script>
+<script src="by.js?v=11"></script>
 </body>
 </html>
