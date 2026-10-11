@@ -48,7 +48,8 @@ function normaliser(o) {
   if (!s.linje || !s.linje.kode) s.linje = klone(STANDARD.linje);
   if (!s.vaer || !isFinite(s.vaer.lat)) s.vaer = klone(STANDARD.vaer);
   if (!TEMA[s.tema]) s.tema = "gronn";
-  if (s.kart === "maptiler") s.kart = s.stil || "dataviz-dark";   // eldre lagrede valg
+  if (s.kart === "mork") s.kart = "graatone";                                         // eldre lagrede valg
+  if (!["linje", "aquarelle", "graatone", "farger"].includes(s.kart)) s.kart = "linje";  // fjernede kartvarianter
   return s;
 }
 function tilBase64(str) { return btoa(String.fromCharCode.apply(null, new TextEncoder().encode(str))); }
@@ -133,6 +134,7 @@ const map = L.map("map");
 map.setView([S.stasjoner[0].lat, S.stasjoner[0].lon], 13);
 const kv = "&copy; <a href='https://www.kartverket.no'>Kartverket</a>";
 const kartMork  = L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", { maxZoom: 18, attribution: kv, className: "mork" });
+const kartGraa = L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png", { maxZoom: 18, attribution: kv });
 const kartFarger = L.tileLayer("https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png", { maxZoom: 18, attribution: kv });
 let aktivtKart = null, kartModus = "linje", kartLys = false, kartVann;
 const mtCache = {};
@@ -143,22 +145,10 @@ let feilKart = null, tileFeil = 0, tileOk = 0;
 
 /* Alle kartvarianter. mt = MapTiler (krever nøkkel). lys = lys bakgrunn (sporlinja tegnes da rød med hvit kant). */
 const KART = [
-  { id: "linje",           navn: "Linjekart (hav og elver)" },
-  { id: "aquarelle",       navn: "Aquarelle",              mt: true, lys: true },
-  { id: "dataviz-dark",    navn: "Dataviz mørk",           mt: true },
-  { id: "backdrop-dark",   navn: "Backdrop mørk",          mt: true },
-  { id: "streets-v2-dark", navn: "Gater mørk",             mt: true },
-  { id: "basic-v2-dark",   navn: "Enkel mørk",             mt: true },
-  { id: "outdoor-v2",      navn: "Friluft",                mt: true, lys: true },
-  { id: "topo-v2",         navn: "Topo",                   mt: true, lys: true },
-  { id: "landscape",       navn: "Landskap",               mt: true, lys: true },
-  { id: "winter-v2",       navn: "Vinter",                 mt: true, lys: true },
-  { id: "ocean",           navn: "Hav",                    mt: true, lys: true },
-  { id: "pastel",          navn: "Pastell",                mt: true, lys: true },
-  { id: "toner-v2",        navn: "Toner",                  mt: true, lys: true },
-  { id: "satellite",       navn: "Satellitt",              mt: true },
-  { id: "mork",            navn: "Kartverket mørkt" },
-  { id: "farger",          navn: "Kartverket farger",      lys: true }
+  { id: "linje",     navn: "Linjekart (hav og elver)" },
+  { id: "aquarelle", navn: "Akvarell",            mt: true, lys: true },
+  { id: "graatone",  navn: "Norgeskart gråtone",  lys: true },
+  { id: "farger",    navn: "Norgeskart",          lys: true }
 ];
 const kartInfo = id => KART.find(k => k.id === id) || KART[0];
 const MT_ATTR = "&copy; <a href='https://www.maptiler.com/copyright/'>MapTiler</a> &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>";
@@ -211,9 +201,9 @@ function velgKart(id) {
   let lag = null;
   if (info.id === "linje") { if (kartVann === undefined) kartVann = lagVannKart(); lag = kartVann; }
   else if (info.mt) { lag = mtCache[info.id] || (mtCache[info.id] = lagMapTiler(info.id)); }
-  else if (info.id === "mork") lag = kartMork;
+  else if (info.id === "graatone") lag = S.tema === "mork" ? kartMork : kartGraa;   // gråtone invertert i mørkt tema
   else if (info.id === "farger") lag = kartFarger;
-  kartModus = info.id; kartLys = info.id === "linje" ? TEMA[S.tema].lys : !!info.lys;
+  kartModus = info.id; kartLys = (info.id === "linje" || info.id === "graatone") ? TEMA[S.tema].lys : !!info.lys;
   if (lag) { aktivtKart = lag; lag.addTo(map); if (lag.bringToBack) lag.bringToBack(); }
   $("btnMap").textContent = "Kart: " + info.navn.replace(/ \(.*\)$/, "");
   tegnLinjekartGrunn();
@@ -227,6 +217,7 @@ let innstilte = [], avvik = [];
 let feil = { tid: null, veh: null, avvik: null, vaer: null, kart: null, rute: null };
 let sisteVehOk = null, lastVehicles = [], vMarkers = new Map(), showAll = false;
 let stnMarker = [], sistTema = null, togNaVeh = null, togNaMal = null;
+let togPos = null, togPosEnkel = false;   // stoppene til neste tog med tider, brukes til «hvor er toget nå»
 let rute = null;         // { nokkel, geom, stopp }
 let ruteForsok = {};     // nøkkel -> tidspunkt, for å ikke spørre hele tiden
 let vehBbox = null, vehIngenModus = false;
@@ -247,7 +238,8 @@ function bruk() {
   lagStn.clearLayers(); lagStopp.clearLayers(); lagRute.clearLayers();
   for (const [, m] of vMarkers) map.removeLayer(m); vMarkers.clear();
   tileFeil = 0; tileOk = 0; feil.kart = null; feilKart = null;
-  togNaVeh = null; togNaMal = null;
+  togNaVeh = null; togNaMal = null; togPos = null;
+  $("lnKode").textContent = S.linje.kode;
   document.body.dataset.tema = S.tema;
   if (sistTema !== S.tema) { sistTema = S.tema; if (kartVann) { map.removeLayer(kartVann); } kartVann = undefined; }
 
@@ -315,7 +307,8 @@ async function hentAnkomster() {
         .map(c => ({
           aimed: new Date(c.aimedArrivalTime || c.aimedDepartureTime),
           expected: new Date(c.expectedArrivalTime || c.expectedDepartureTime),
-          realtime: c.realtime, cancelled: !!c.cancellation, stasjon: s.navn, sj: c.serviceJourney.id
+          realtime: c.realtime, cancelled: !!c.cancellation, stasjon: s.navn, sj: c.serviceJourney.id,
+          dest: c.destinationDisplay && c.destinationDisplay.frontText
         }))
         .filter(c => c.expected.getTime() > naa - 60000)
         .sort((a, b) => a.expected - b.expected);
@@ -327,10 +320,12 @@ async function hentAnkomster() {
     neste = nye; innstilte = nyeInnstilte; feil.tid = null;
     const forste = neste.find(n => n);
     if (forste) hentRute(forste.sj);
+    hentTogPos();
   } catch (e) { feil.tid = e.message; dbg("RUTETID FEIL: " + e.message); }
   tegnKort(); tegnAvvik(); tegnStatus();
 }
 function tegnKort() {
+  tegnTogNa();
   const naa = Date.now();
   S.stasjoner.forEach((s, i) => {
     const t = $("t" + i), sub = $("s" + i), n = neste[i];
@@ -470,12 +465,12 @@ async function hentVaer() {
       return { tid: dagTxt + hhmm(tt), kode: sym ? sym.symbol_code : "", temp: Math.round(det.air_temperature), nedb, vind: Math.round(det.wind_speed) };
     });
     const nb = n => n == null ? "" : n > 0 ? String(Math.round(n * 10) / 10).replace(".", ",") : "–";
-    const rekke = (navn, f) => `<tr><td class="k"></td>${kol.map(f).join("")}</tr>`;
-    $("weather").innerHTML = `<table id="wTab"><tr><th class="k">${esc(mitt.vaer.navn)}</th>${kol.map(k => `<th>${esc(k.tid)}</th>`).join("")}</tr>` +
+    const rekke = (navn, f) => `<tr><td class="k">${navn}</td>${kol.map(f).join("")}</tr>`;
+    $("weather").innerHTML = `<div class="wh">Været i <b>${esc(mitt.vaer.navn)}</b> de neste timene</div><table id="wTab"><tr><th class="k"></th>${kol.map(k => `<th>${esc(k.tid)}</th>`).join("")}</tr>` +
       rekke("", k => `<td><img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(k.kode)}.svg" onerror="this.style.display='none'"></td>`) +
-      rekke("", k => `<td class="tmp">${k.temp}&deg;</td>`) +
-      rekke("", k => `<td class="nb">${nb(k.nedb)}</td>`) +
-      rekke("", k => `<td>${k.vind}</td>`) + `</table>`;
+      rekke("&deg;C", k => `<td class="tmp">${k.temp}&deg;</td>`) +
+      rekke("mm", k => `<td class="nb">${nb(k.nedb)}</td>`) +
+      rekke("m/s", k => `<td>${k.vind}</td>`) + `</table>`;
     feil.vaer = null; dbg(`Vær OK (${mitt.vaer.navn}): ${vis.length} tidspunkt`);
   } catch (e) { feil.vaer = e.message; dbg("VÆR FEIL: " + e.message); $("weather").textContent = "Værmelding utilgjengelig"; }
   tegnStatus();
@@ -521,11 +516,50 @@ function posTekst(v, mal) {
   const j = !fo ? bi + 1 : !ne ? bi - 1 : (km(la, lo, fo.lat, fo.lon) < km(la, lo, ne.lat, ne.lon) ? bi - 1 : bi + 1);
   return `mellom ${st[Math.min(bi, j)].navn} og ${st[Math.max(bi, j)].navn}`;
 }
+function nesteTog() {   // toget som kommer først til en av de valgte stasjonene
+  return neste.filter(n => n).sort((a, b) => a.expected - b.expected)[0] || null;
+}
+async function hentTogPos() {
+  const n = nesteTog(), mitt = S;
+  if (!n) { togPos = null; tegnTogNa(); return; }
+  const q = full => `{ serviceJourney(id: "${n.sj}") { estimatedCalls { quay { name } cancellation
+    aimedArrivalTime expectedArrivalTime aimedDepartureTime expectedDepartureTime ${full ? "actualArrivalTime actualDepartureTime" : ""} } } }`;
+  try {
+    let d;
+    try { d = await gql(URL_JP, q(!togPosEnkel)); }
+    catch (e) { if (togPosEnkel) throw e; togPosEnkel = true; d = await gql(URL_JP, q(false)); }
+    if (mitt !== S) return;
+    const kall = ((d.serviceJourney || {}).estimatedCalls || []).filter(c => c.quay && !c.cancellation);
+    togPos = { sj: n.sj, kall };
+  } catch (e) { dbg("TOGPOSISJON FEIL: " + e.message); togPos = null; }
+  tegnTogNa();
+}
+/* Leser ut hvor toget er fra avgangs- og ankomsttidene (faktiske når de finnes, ellers forventede). */
+function posFraKall(k) {
+  if (!k || k.length < 2) return null;
+  const naa = Date.now(), t = x => x ? new Date(x).getTime() : NaN;
+  const ank = c => t(c.actualArrivalTime || c.expectedArrivalTime || c.aimedArrivalTime);
+  const avg = c => t(c.actualDepartureTime || c.expectedDepartureTime || c.aimedDepartureTime);
+  const nv = c => avkortNavn(c.quay.name);
+  if (!(avg(k[0]) <= naa)) return "ikke startet enda";
+  for (let i = 1; i < k.length; i++) {
+    const a = ank(k[i]), d = avg(k[i]);
+    if (a <= naa && (isNaN(d) || naa < d)) return `nå ved ${nv(k[i])} stasjon`;
+  }
+  let sist = 0;
+  k.forEach((c, i) => { if (avg(c) <= naa) sist = i; });
+  if (sist >= k.length - 1) return "framme";
+  return `nå mellom ${nv(k[sist])} og ${nv(k[sist + 1])} stasjon`;
+}
 function tegnTogNa() {
   const el = $("togNa"); if (!el) return;
-  if (feil.veh && !sisteVehOk) el.textContent = "posisjon utilgjengelig";
-  else if (!sisteVehOk) el.textContent = "henter posisjon ...";
-  else el.textContent = togNaVeh ? "nå " + posTekst(togNaVeh, togNaMal) : "ikke startet enda";
+  const n = nesteTog();
+  $("lnDest").textContent = n && n.dest ? "mot " + n.dest : (S.retning.tekster.length ? "mot " + S.retning.tekster.join(" / ") : "");
+  let tekst = null;
+  if (n && togPos && togPos.sj === n.sj) tekst = posFraKall(togPos.kall);
+  if (!tekst && togNaVeh) tekst = "nå " + posTekst(togNaVeh, togNaMal);       // reserve: nærmeste tog på kartet
+  if (!tekst) tekst = !n ? "ingen flere avganger i dag" : feil.tid ? "posisjon utilgjengelig" : "henter posisjon ...";
+  el.textContent = tekst;
 }
 function oppdaterKart(vs) {
   const hovedtog = vs.filter(v => erLinje(v) && mot(v));
@@ -613,35 +647,51 @@ function tegnStn() {
   $("valgteStn").querySelectorAll("button").forEach(b => b.onclick = () => { U.stasjoner.splice(+b.dataset.i, 1); tegnStn(); });
 }
 function tegnVaerValgt() { $("vaerValgt").innerHTML = `<span class="chip">${esc(U.vaer.navn)}</span>`; }
+/* Grupperer destinasjonene til en linje i retninger, ut fra kompasskurs fra første valgte stasjon.
+   Asker, Drammen og Oslo S havner da i samme retning, Kongsvinger i den andre. */
+async function grupperRetning(k) {
+  const st = U.stasjoner[0], dest = [...k.dest].sort();
+  const pos = await Promise.all(dest.map(d => geokode(d, { venue: true, size: 1, fokus: st })
+    .then(f => f[0] ? { lat: f[0].geometry.coordinates[1], lon: f[0].geometry.coordinates[0] } : null).catch(() => null)));
+  const gr = [];
+  dest.forEach((d, i) => {
+    const p = pos[i], b = p && st ? kurs(st.lat, st.lon, p.lat, p.lon) : null;
+    let g = b == null ? null : gr.find(x => x.b != null && vinkelDiff(x.b, b) < 90);
+    if (!g) { g = { b, dest: [], lat: p ? p.lat : null, lon: p ? p.lon : null }; gr.push(g); }
+    g.dest.push(d);
+  });
+  k.grupper = gr;
+}
+const passerRetning = g => g.dest.some(d => U.retning.tekster.some(t => d.toLowerCase().includes(String(t).toLowerCase())));
 function tegnLinjer() {
-  if (!kandidater.length) {
-    $("linjeListe").innerHTML = `<div class="hint">Valgt nå: <b>${esc(U.linje.kode)}</b>${U.retning.tekster.length ? " mot " + esc(U.retning.tekster.join(", ")) : ""}</div>`;
-    return;
-  }
-  $("linjeListe").innerHTML = kandidater.map((k, i) => {
+  const naa = U.linje && U.linje.kode ? `<div class="valgtLinje">Valgt: <span class="lb">${esc(U.linje.kode)}</span> ${U.retning.tekster.length ? "mot " + esc(U.retning.tekster.join(", ")) : "<i>ingen retning valgt</i>"}</div>` : "";
+  if (!kandidater.length) { $("linjeListe").innerHTML = naa; return; }
+  $("linjeListe").innerHTML = naa + kandidater.map((k, i) => {
     const valgt = U.linje.kode === k.kode && U.linje.modus === k.modus;
-    const dest = valgt ? `<div class="dest">${[...k.dest].sort().map(d => {
-      const ch = U.retning.tekster.some(t => d.toLowerCase().includes(t.toLowerCase())) ? "checked" : "";
-      return `<label><input type="checkbox" data-d="${esc(d)}" ${ch}> mot ${esc(d)}</label>`; }).join("")}</div>` : "";
-    return `<label class="ln"><input type="radio" name="ln" data-i="${i}" ${valgt ? "checked" : ""}> <b>${esc(k.kode)}</b> (${esc(MODUS_TXT[k.modus] || k.modus)}) <span class="hint">${esc([...k.stn].join(", "))}</span></label>${dest}`;
+    let dest = "";
+    if (valgt) {
+      if (!k.grupper) { dest = `<div class="dest hint">Finner retninger ...</div>`; if (!k.henter) { k.henter = true; grupperRetning(k).then(tegnLinjer); } }
+      else {
+        if (k.grupper.length === 1 && !k.grupper.some(passerRetning)) { const g = k.grupper[0]; U.retning = { tekster: g.dest.slice(), lat: g.lat, lon: g.lon }; }
+        dest = `<div class="dest">${k.grupper.map((g, gi) =>
+          `<label><input type="radio" name="ret" data-g="${gi}" ${passerRetning(g) ? "checked" : ""}> mot ${esc(g.dest.join(", "))}</label>`).join("")}</div>`;
+      }
+    }
+    return `<label class="ln${valgt ? " valgt" : ""}"><input type="radio" name="ln" data-i="${i}" ${valgt ? "checked" : ""}> <span class="lb">${esc(k.kode)}</span> ${esc(MODUS_TXT[k.modus] || k.modus)} <span class="hint">${esc([...k.stn].join(", "))}</span></label>${dest}`;
   }).join("");
-  $("linjeListe").querySelectorAll("input[type=radio]").forEach(r => r.onchange = () => {
+  $("linjeListe").querySelectorAll("input[name=ln]").forEach(r => r.onchange = () => {
     const k = kandidater[+r.dataset.i];
     U.linje = { kode: k.kode, modus: k.modus }; U.retning = { tekster: [] }; tegnLinjer();
-    melding("Velg retning (destinasjon) under linja.");
+    melding("Velg retning under linja.");
   });
-  $("linjeListe").querySelectorAll("input[type=checkbox]").forEach(c => c.onchange = async () => {
-    const valgte = [...$("linjeListe").querySelectorAll("input[type=checkbox]")].filter(x => x.checked).map(x => x.dataset.d);
-    U.retning = { tekster: valgte };
-    if (valgte.length) {
-      try {
-        const f = await geokode(valgte[0], { venue: true, size: 1, fokus: U.stasjoner[0] });
-        if (f[0]) { U.retning.lat = f[0].geometry.coordinates[1]; U.retning.lon = f[0].geometry.coordinates[0]; }
-      } catch (e) { dbg("Geokoding av destinasjon feilet: " + e.message); }
-    }
-    melding("");
+  $("linjeListe").querySelectorAll("input[name=ret]").forEach(r => r.onchange = () => {
+    const k = kandidater.find(x => x.kode === U.linje.kode && x.modus === U.linje.modus);
+    const g = k && k.grupper && k.grupper[+r.dataset.g]; if (!g) return;
+    U.retning = { tekster: g.dest.slice(), lat: g.lat, lon: g.lon };
+    tegnLinjer(); melding("");
   });
 }
+
 async function finnLinjer() {
   if (!U.stasjoner.length) { melding("Velg minst én stasjon først."); return; }
   $("linjeInfo").textContent = "Søker ..."; kandidater = [];
@@ -705,6 +755,7 @@ $("vaerSok").oninput = debounce(() => sokSteder($("vaerSok"), $("vaerTreff"), fa
 $("dlgSave").onclick = () => {
   if (!U.stasjoner.length) { melding("Velg minst én stasjon."); return; }
   if (!U.linje || !U.linje.kode) { melding("Velg linje."); return; }
+  if (!U.retning.tekster.length) { melding("Velg retning for linja."); return; }
   U.kart = $("kartType").value; U.tema = $("temaValg").value;
   try { const k = $("keyInn").value.trim(); if (k) localStorage.setItem("togskjerm.key", k); else localStorage.removeItem("togskjerm.key"); } catch (e) {}
   S = normaliser(U); lagreInnstillinger(S);

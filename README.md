@@ -15,7 +15,7 @@ Filene:
 3. Under «Allowed HTTP origins» legger du inn adressen siden skal ligge på, for eksempel `https://BRUKERNAVN.github.io`. Da kan ikke andre bruke nøkkelen din fra andre nettsider.
 4. Åpne `config.js` og lim nøkkelen inn mellom anførselstegnene etter `maptilerKey:`.
 
-Den gratis planen er ment for privat og ikke-kommersiell bruk og har en månedlig kvote. Følg med på forbruket i MapTiler-kontoen. Med nøkkel får du MapTiler-stilene (blant annet Aquarelle, Friluft, Topo og flere mørke), og linjekartet tegner hav, innsjøer og elver. Uten nøkkel fungerer siden fortsatt, men linjekartet blir bare en strek på mørk bakgrunn, og du kan velge Kartverkets kart.
+Den gratis planen er ment for privat og ikke-kommersiell bruk og har en månedlig kvote. Følg med på forbruket i MapTiler-kontoen. Med nøkkel får du akvarellkartet, og linjekartet tegner hav, innsjøer og elver. Uten nøkkel fungerer siden fortsatt, men linjekartet blir bare en strek, og du kan velge Norgeskart eller Norgeskart gråtone fra Kartverket.
 
 ## 2. Legg siden ut på GitHub Pages
 
@@ -44,7 +44,7 @@ Mangler du valget «Deploy from a branch», er repoet som regel privat. På en g
 Trykk tannhjulet øverst til høyre. Der ligger knappene Kart, Alle, Fullskjerm og Innstillinger. Under Innstillinger velger du:
 
 1. Stasjoner eller holdeplasser (opptil tre).
-2. Linje og retning. Trykk «Finn linjer», velg linje og kryss av for destinasjonen toget skal gå mot.
+2. Linje og retning. Trykk «Finn linjer», velg linje og deretter én retning. Destinasjoner i samme retning (for eksempel Oslo S og Asker) er slått sammen.
 3. Sted for værmeldingen.
 4. Utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
 
@@ -52,9 +52,9 @@ Valgene lagres i nettleseren. «Kopier lenke» lager en lenke som setter opp sam
 
 For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la nettleseren stå.
 
-Over stasjonskortene står «Neste tog» og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»).
+Over stasjonskortene står «Neste tog» med linje, retning og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
 
-Værmeldingen vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, uten tekstetiketter. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
+Værmeldingen vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
 
 ## Kjente forbehold
 
