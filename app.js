@@ -23,7 +23,8 @@ const STANDARD = {
   vaer: { navn: "Oslo", lat: 59.91, lon: 10.75 },
   kart: "linje",
   stil: "dataviz-dark",
-  tema: "gronn"
+  tema: "gronn",
+  togIkon: "damp"
 };
 /* Fargetemaer for linjekartet og markørene. lys = lys bakgrunn (sporlinja tegnes da rød med hvit kant). */
 const TEMA = {
@@ -48,6 +49,7 @@ function normaliser(o) {
   if (!s.linje || !s.linje.kode) s.linje = klone(STANDARD.linje);
   if (!s.vaer || !isFinite(s.vaer.lat)) s.vaer = klone(STANDARD.vaer);
   if (!TEMA[s.tema]) s.tema = "gronn";
+  if (!["damp", "damprøyk", "dampfront", "emoji", "moderne"].includes(s.togIkon)) s.togIkon = "damp";
   if (s.kart === "mork") s.kart = "graatone";                                         // eldre lagrede valg
   if (!["linje", "aquarelle", "graatone", "farger"].includes(s.kart)) s.kart = "linje";  // fjernede kartvarianter
   return s;
@@ -212,7 +214,7 @@ function visLabels() { $("map").classList.toggle("zoomedOut", map.getZoom() < 11
 map.on("zoomend", visLabels);
 
 /* ---------- Kjøretidstilstand ---------- */
-let neste = [];          // neste ankomst per stasjon
+let neste = [], motsatt = [];   // neste ankomst per stasjon, og neste avgang i motsatt retning          // neste ankomst per stasjon
 let innstilte = [], avvik = [];
 let feil = { tid: null, veh: null, avvik: null, vaer: null, kart: null, rute: null };
 let sisteVehOk = null, lastVehicles = [], vMarkers = new Map(), showAll = false;
@@ -233,7 +235,7 @@ const erRetning = tekst => (S.retning.tekster || []).length === 0 ||
 
 /* ---------- Oppsett av kort og stasjoner ---------- */
 function bruk() {
-  neste = S.stasjoner.map(() => null);
+  neste = S.stasjoner.map(() => null); motsatt = S.stasjoner.map(() => null);
   innstilte = []; avvik = []; rute = null; vehBbox = null; ruteForsok = {};
   lagStn.clearLayers(); lagStopp.clearLayers(); lagRute.clearLayers();
   for (const [, m] of vMarkers) map.removeLayer(m); vMarkers.clear();
@@ -244,7 +246,7 @@ function bruk() {
   if (sistTema !== S.tema) { sistTema = S.tema; if (kartVann) { map.removeLayer(kartVann); } kartVann = undefined; }
 
   $("kort").innerHTML = S.stasjoner.map((s, i) =>
-    `<div class="card"><div class="l">${esc(s.navn)}</div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div></div>`).join("");
+    `<div class="card"><div class="l">${esc(s.navn)}</div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div><div class="m" id="m${i}"></div></div>`).join("");
 
   stnMarker = S.stasjoner.map((s, i) =>
     L.circleMarker([s.lat, s.lon], { pane: "pStn", radius: 9, color: TEMA[S.tema].stn, weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStn)
@@ -278,7 +280,7 @@ function tegnLinjekartGrunn() {
   else if (rute && rute.stopp && rute.stopp.length > 1) g = glatt(rute.stopp.map(x => [x.lat, x.lon]), 3);   // reserve: glattet linje gjennom stoppene
   if (!g) return;
   const kant = kartLys ? "#ffffff" : "#58c47a", kjerne = kartLys ? "#b42318" : "#8fe3ad";
-  L.polyline(g, { pane: "pRute", color: kant, weight: kartLys ? 8 : 10, opacity: kartLys ? 0.9 : 0.18, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
+  L.polyline(g, { pane: "pRute", interactive: true, bubblingMouseEvents: false, color: kant, weight: kartLys ? 8 : 10, opacity: kartLys ? 0.9 : 0.18, lineCap: "round", lineJoin: "round" }).on("click", velgRute).addTo(lagRute);
   L.polyline(g, { pane: "pRute", color: kjerne, weight: 3, opacity: 0.95, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
 }
 
@@ -295,7 +297,7 @@ function ankomstQuery(id) {
 async function hentAnkomster() {
   const mitt = S;
   try {
-    const nye = [], nyeInnstilte = [];
+    const nye = [], nyeInnstilte = [], nyeMot = [];
     for (let i = 0; i < mitt.stasjoner.length; i++) {
       const s = mitt.stasjoner[i];
       const d = await gql(URL_JP, ankomstQuery(s.id));
@@ -313,11 +315,20 @@ async function hentAnkomster() {
         .filter(c => c.expected.getTime() > naa - 60000)
         .sort((a, b) => a.expected - b.expected);
       nye[i] = treff.find(c => !c.cancelled) || null;
+      if ((mitt.retning.tekster || []).length) {     // samme linje, motsatt retning: bruk avgangstid
+        nyeMot[i] = kall
+          .filter(c => c.serviceJourney && c.serviceJourney.line && c.serviceJourney.line.publicCode === mitt.linje.kode && !c.cancellation)
+          .filter(c => !erRetning(c.destinationDisplay && c.destinationDisplay.frontText))
+          .map(c => ({ expected: new Date(c.expectedDepartureTime || c.expectedArrivalTime), aimed: new Date(c.aimedDepartureTime || c.aimedArrivalTime),
+                       realtime: c.realtime, dest: c.destinationDisplay && c.destinationDisplay.frontText }))
+          .filter(c => c.expected.getTime() > naa - 30000)
+          .sort((a, b) => a.expected - b.expected)[0] || null;
+      } else nyeMot[i] = null;
       treff.filter(c => c.cancelled).forEach(c => nyeInnstilte.push(c));
       dbg(`${s.navn}: ${kall.length} anrop, ${treff.length} ${mitt.linje.kode} i valgt retning, neste ${nye[i] ? hhmm(nye[i].expected) : "ingen"}`);
     }
     if (mitt !== S) return;          // innstillinger endret underveis
-    neste = nye; innstilte = nyeInnstilte; feil.tid = null;
+    neste = nye; motsatt = nyeMot; innstilte = nyeInnstilte; feil.tid = null;
     const forste = neste.find(n => n);
     if (forste) hentRute(forste.sj);
     hentTogPos();
@@ -328,7 +339,13 @@ function tegnKort() {
   tegnTogNa();
   const naa = Date.now();
   S.stasjoner.forEach((s, i) => {
-    const t = $("t" + i), sub = $("s" + i), n = neste[i];
+    const t = $("t" + i), sub = $("s" + i), n = neste[i], mo = motsatt[i], me = $("m" + i);
+    if (me) {
+      if (!S.retning.tekster.length) me.textContent = "";
+      else if (!mo) me.textContent = "Motsatt vei: ingen flere i dag";
+      else { const fm = Math.round((mo.expected - mo.aimed) / 60000);
+        me.innerHTML = `Motsatt<span class="vei"> vei</span> <b>${hhmm(mo.expected)}</b>${mo.dest ? " mot " + esc(mo.dest) : ""}${mo.realtime && fm >= 1 ? ` <span class="late">+${fm}</span>` : ""}`; }
+    }
     if (!t || !stnMarker[i]) return;
     if (!n) { t.textContent = "-"; sub.textContent = "Ingen flere avganger i dag"; stnMarker[i].setTooltipContent(esc(s.navn)); return; }
     const min = Math.round((n.expected - naa) / 60000);
@@ -467,8 +484,7 @@ async function hentVaer() {
     const nb = n => n == null ? "" : n > 0 ? String(Math.round(n * 10) / 10).replace(".", ",") : "–";
     const rekke = (navn, f) => `<tr><td class="k">${navn}</td>${kol.map(f).join("")}</tr>`;
     $("weather").innerHTML = `<div class="wh">Været i <b>${esc(mitt.vaer.navn)}</b> de neste timene</div><table id="wTab"><tr><th class="k"></th>${kol.map(k => `<th>${esc(k.tid)}</th>`).join("")}</tr>` +
-      rekke("", k => `<td><img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(k.kode)}.svg" onerror="this.style.display='none'"></td>`) +
-      rekke("&deg;C", k => `<td class="tmp">${k.temp}&deg;</td>`) +
+      rekke("&deg;C", k => `<td class="tmp"><img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(k.kode)}.svg" onerror="this.style.display='none'">${k.temp}&deg;</td>`) +
       rekke("mm", k => `<td class="nb">${nb(k.nedb)}</td>`) +
       rekke("m/s", k => `<td>${k.vind}</td>`) + `</table>`;
     feil.vaer = null; dbg(`Vær OK (${mitt.vaer.navn}): ${vis.length} tidspunkt`);
@@ -499,10 +515,24 @@ function vehQuery(medModus, bb) {
     location { latitude longitude }
   } }`;
 }
-const TOG_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="15" rx="3.5" fill="currentColor"/><rect x="7.5" y="5" width="9" height="5.5" rx="1.2" fill="#f2b705"/><circle cx="8.8" cy="14" r="1.3" fill="#f2b705"/><circle cx="15.2" cy="14" r="1.3" fill="#f2b705"/><path d="M8.5 17.5 6.5 21.5M15.5 17.5 17.5 21.5M4.5 21.5h15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>';
+const TOG_IKONER = {
+  "damp": { navn: "Damplok", bred: true, html: "<svg class=\"side\" viewBox=\"0 0 32 24\" aria-hidden=\"true\"><g fill=\"currentColor\"><rect x=\"2\" y=\"2.6\" width=\"10\" height=\"2\" rx=\"1\"/><rect x=\"3\" y=\"4\" width=\"8\" height=\"12\"/><rect x=\"10\" y=\"8\" width=\"16.5\" height=\"8\" rx=\"3.5\"/><path d=\"M20.6 8V4.6h-1.1V2.4h5.2v2.2h-1.1V8z\"/><path d=\"M14 8a2.2 2.2 0 0 1 4.4 0z\"/><rect x=\"2\" y=\"15.4\" width=\"27\" height=\"2.2\"/><path d=\"M28 15.4l3.6 4.8H26.8z\"/><circle cx=\"7\" cy=\"19.6\" r=\"3.6\"/><circle cx=\"15.2\" cy=\"20.2\" r=\"3\"/><circle cx=\"22\" cy=\"20.2\" r=\"3\"/></g><rect x=\"5\" y=\"6.4\" width=\"4\" height=\"4\" rx=\".6\" style=\"fill:var(--ikbg)\"/><circle cx=\"7\" cy=\"19.6\" r=\"1.2\" style=\"fill:var(--ikbg)\"/><circle cx=\"15.2\" cy=\"20.2\" r=\"1\" style=\"fill:var(--ikbg)\"/><circle cx=\"22\" cy=\"20.2\" r=\"1\" style=\"fill:var(--ikbg)\"/><path d=\"M7 19.6 22 20.2\" stroke-width=\"1.1\" style=\"stroke:var(--ikbg)\"/><circle cx=\"26.2\" cy=\"11.6\" r=\"1.3\" style=\"fill:var(--ikbg)\"/></svg>" },
+  "damprøyk": { navn: "Damplok med røyk", bred: true, html: "<svg class=\"side\" viewBox=\"0 0 32 24\" aria-hidden=\"true\" overflow=\"visible\"><g class=\"roeyk\"><circle cx=\"23\" cy=\"0\" r=\"2.2\"/><circle cx=\"18.5\" cy=\"-3\" r=\"2.8\"/><circle cx=\"12.5\" cy=\"-4.5\" r=\"3.3\"/></g><g fill=\"currentColor\"><rect x=\"2\" y=\"2.6\" width=\"10\" height=\"2\" rx=\"1\"/><rect x=\"3\" y=\"4\" width=\"8\" height=\"12\"/><rect x=\"10\" y=\"8\" width=\"16.5\" height=\"8\" rx=\"3.5\"/><path d=\"M20.6 8V4.6h-1.1V2.4h5.2v2.2h-1.1V8z\"/><path d=\"M14 8a2.2 2.2 0 0 1 4.4 0z\"/><rect x=\"2\" y=\"15.4\" width=\"27\" height=\"2.2\"/><path d=\"M28 15.4l3.6 4.8H26.8z\"/><circle cx=\"7\" cy=\"19.6\" r=\"3.6\"/><circle cx=\"15.2\" cy=\"20.2\" r=\"3\"/><circle cx=\"22\" cy=\"20.2\" r=\"3\"/></g><rect x=\"5\" y=\"6.4\" width=\"4\" height=\"4\" rx=\".6\" style=\"fill:var(--ikbg)\"/><circle cx=\"7\" cy=\"19.6\" r=\"1.2\" style=\"fill:var(--ikbg)\"/><circle cx=\"15.2\" cy=\"20.2\" r=\"1\" style=\"fill:var(--ikbg)\"/><circle cx=\"22\" cy=\"20.2\" r=\"1\" style=\"fill:var(--ikbg)\"/><path d=\"M7 19.6 22 20.2\" stroke-width=\"1.1\" style=\"stroke:var(--ikbg)\"/><circle cx=\"26.2\" cy=\"11.6\" r=\"1.3\" style=\"fill:var(--ikbg)\"/></svg>" },
+  "dampfront": { navn: "Damplok forfra", bred: false, html: "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><g fill=\"currentColor\"><rect x=\"9\" y=\"0.8\" width=\"6\" height=\"1.6\" rx=\".5\"/><rect x=\"10\" y=\"1.5\" width=\"4\" height=\"4\"/><circle cx=\"12\" cy=\"10.8\" r=\"6.6\"/><rect x=\"2.5\" y=\"15.6\" width=\"19\" height=\"3.2\" rx=\"1\"/><path d=\"M6.5 18.6h11l-2 4.4h-7z\"/></g><circle cx=\"12\" cy=\"10.8\" r=\"2.6\" style=\"fill:var(--ikbg)\"/><circle cx=\"12\" cy=\"10.8\" r=\"4.6\" fill=\"none\" stroke-width=\".9\" style=\"stroke:var(--ikbg)\"/><circle cx=\"5.2\" cy=\"17.2\" r=\"1.2\" style=\"fill:var(--ikbg)\"/><circle cx=\"18.8\" cy=\"17.2\" r=\"1.2\" style=\"fill:var(--ikbg)\"/></svg>" },
+  "emoji": { navn: "Emoji 🚂", bred: false, html: "<span class=\"emo\">🚂</span>" },
+  "moderne": { navn: "Moderne tog", bred: false, html: "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"5\" y=\"2.5\" width=\"14\" height=\"15\" rx=\"3.5\" fill=\"currentColor\"/><rect x=\"7.5\" y=\"5\" width=\"9\" height=\"5.5\" rx=\"1.2\" style=\"fill:var(--ikbg)\"/><circle cx=\"8.8\" cy=\"14\" r=\"1.3\" style=\"fill:var(--ikbg)\"/><circle cx=\"15.2\" cy=\"14\" r=\"1.3\" style=\"fill:var(--ikbg)\"/><path d=\"M8.5 17.5 6.5 21.5M15.5 17.5 17.5 21.5M4.5 21.5h15\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" fill=\"none\"/></svg>" }
+};
 function ikon(v, hoved) {
   const kode = (v.line && v.line.publicCode) || "";
-  return L.divIcon({ className: "", iconSize: [38, 38], iconAnchor: [19, 19], html: `<div class="trainIcon ${hoved ? "" : "other"}">${TOG_SVG}${kode ? `<span class="kode">${esc(kode)}</span>` : ""}</div>` });
+  const ik = TOG_IKONER[S.togIkon] || TOG_IKONER.damp;
+  const k = hoved ? az() : (typeof v.bearing === "number" && v.bearing ? v.bearing : null);   // kjøreretning, for å snu loket riktig vei
+  const snu = k != null && k > 180 && k < 360;
+  const nokkel = [hoved, kode, S.togIkon, snu].join("|");
+  const st = ik.bred ? [60, 42] : [40, 40];
+  const icon = L.divIcon({ className: "", iconSize: st, iconAnchor: [st[0] / 2, st[1] / 2],
+    html: `<div class="trainIcon${hoved ? "" : " other"}${ik.bred ? " bred" : ""}${snu ? " snu" : ""}">${ik.html}${kode ? `<span class="kode">${esc(kode)}</span>` : ""}</div>` });
+  icon.nokkel = nokkel;
+  return icon;
 }
 /* Hvor er toget nå? Bruker stoppene på ruta når de er hentet. */
 function posTekst(v, mal) {
@@ -569,10 +599,11 @@ function oppdaterKart(vs) {
   vis.forEach(v => {
     const pos = [v.location.latitude, v.location.longitude], hoved = erLinje(v) && mot(v);
     let m = vMarkers.get(v.vehicleId);
-    if (!m) { m = L.marker(pos, { icon: ikon(v, hoved), zIndexOffset: hoved ? 1000 : 0 }).addTo(map); vMarkers.set(v.vehicleId, m); }
-    else { m.setLatLng(pos); m.setIcon(ikon(v, hoved)); }
+    const ic = ikon(v, hoved);
+    if (!m) { m = L.marker(pos, { icon: ic, zIndexOffset: hoved ? 1000 : 0 }).addTo(map); m._ik = ic.nokkel; vMarkers.set(v.vehicleId, m); }
+    else { m.setLatLng(pos); if (m._ik !== ic.nokkel) { m.setIcon(ic); m._ik = ic.nokkel; } }   // nytt ikon bare ved endring, så animasjonen ikke starter på nytt
   });
-  // Følg toget som snart kommer til siste valgte stasjon (sett i kjøreretningen)
+  // Finn toget som snart kommer til siste valgte stasjon (sett i kjøreretningen). Kartutsnittet styres bare av brukeren.
   const a = az();
   let mal = S.stasjoner[0];
   if (a != null) {
@@ -585,7 +616,6 @@ function oppdaterKart(vs) {
     return { v, d, passert };
   }).filter(k => !k.passert).sort((p, q) => p.d - q.d);
   togNaVeh = kand[0] ? kand[0].v : null; togNaMal = mal; tegnTogNa();
-  if (kand[0] && !showAll) map.panInside([kand[0].v.location.latitude, kand[0].v.location.longitude], { padding: [90, 90] });
   return hovedtog.length;
 }
 async function hentPosisjoner() {
@@ -731,6 +761,8 @@ function fyllKartValg() {
 function apneInnstillinger() {
   U = klone(S); kandidater = [];
   $("temaValg").value = TEMA[U.tema] ? U.tema : "gronn";
+  $("ikonValg").innerHTML = Object.entries(TOG_IKONER).map(([k, v]) => `<option value="${k}">${esc(v.navn)}</option>`).join("");
+  $("ikonValg").value = TOG_IKONER[U.togIkon] ? U.togIkon : "damp";
   try { fyllKartValg(); $("kartType").value = tilgjengeligeKart().includes(U.kart) ? U.kart : "linje"; } catch (e) { dbg("Kartvalg: " + e.message); }
   $("keyInn").value = (() => { try { return localStorage.getItem("togskjerm.key") || ""; } catch (e) { return ""; } })();
   $("linjeInfo").textContent = ""; melding("");
@@ -739,6 +771,12 @@ function apneInnstillinger() {
 }
 const lukk = () => $("dlg").classList.remove("vis");
 $("btnSet").onclick = apneInnstillinger;
+function velgRute() {     // snarvei: åpne innstillingene rett på linje og retning, og hent linjene
+  apneInnstillinger();
+  const h = $("hLinje"); if (h) { h.scrollIntoView({ block: "start" }); h.classList.add("fokus"); setTimeout(() => h.classList.remove("fokus"), 2500); }
+  finnLinjer();
+}
+$("ruteKnapp").onclick = velgRute;
 $("dlgCancel").onclick = lukk;
 $("finnLinjer").onclick = finnLinjer;
 $("stnSok").oninput = debounce(() => sokSteder($("stnSok"), $("stnTreff"), true, f => {
@@ -756,19 +794,19 @@ $("dlgSave").onclick = () => {
   if (!U.stasjoner.length) { melding("Velg minst én stasjon."); return; }
   if (!U.linje || !U.linje.kode) { melding("Velg linje."); return; }
   if (!U.retning.tekster.length) { melding("Velg retning for linja."); return; }
-  U.kart = $("kartType").value; U.tema = $("temaValg").value;
+  U.kart = $("kartType").value; U.tema = $("temaValg").value; U.togIkon = $("ikonValg").value;
   try { const k = $("keyInn").value.trim(); if (k) localStorage.setItem("togskjerm.key", k); else localStorage.removeItem("togskjerm.key"); } catch (e) {}
   S = normaliser(U); lagreInnstillinger(S);
   Object.keys(mtCache).forEach(k => delete mtCache[k]); kartVann = undefined;   // bygg om kartlagene (ny nøkkel)
   vehIngenModus = false; rute = null; lukk(); bruk();
 };
 $("dlgLink").onclick = async () => {
-  U.kart = $("kartType").value; U.tema = $("temaValg").value;
+  U.kart = $("kartType").value; U.tema = $("temaValg").value; U.togIkon = $("ikonValg").value;
   const l = delingsLenke(normaliser(U));
   try { await navigator.clipboard.writeText(l); melding("Lenken er kopiert. Din MapTiler-nøkkel er ikke med i lenken."); }
   catch (e) { window.prompt("Kopier lenken:", l); }
 };
-$("dlgReset").onclick = () => { U = klone(STANDARD); kandidater = []; tegnStn(); tegnLinjer(); tegnVaerValgt(); fyllKartValg(); $("kartType").value = U.kart; $("temaValg").value = U.tema; melding("Standardoppsett valgt. Trykk Lagre."); };
+$("dlgReset").onclick = () => { U = klone(STANDARD); kandidater = []; tegnStn(); tegnLinjer(); tegnVaerValgt(); fyllKartValg(); $("kartType").value = U.kart; $("temaValg").value = U.tema; $("ikonValg").value = U.togIkon; melding("Standardoppsett valgt. Trykk Lagre."); };
 $("dlgDbg").onclick = () => { const d = $("debug"); d.style.display = d.style.display === "block" ? "none" : "block"; };
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) lukk(); });
 

@@ -46,13 +46,13 @@ Trykk tannhjulet øverst til høyre. Der ligger knappene Kart, Alle, Fullskjerm 
 1. Stasjoner eller holdeplasser (opptil tre).
 2. Linje og retning. Trykk «Finn linjer», velg linje og deretter én retning. Destinasjoner i samme retning (for eksempel Oslo S og Asker) er slått sammen.
 3. Sted for værmeldingen.
-4. Utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
+4. Ikon for toget (damplok, damplok med røyk, damplok forfra, emoji eller moderne tog), utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
 
 Valgene lagres i nettleseren. «Kopier lenke» lager en lenke som setter opp samme visning for andre. Nøkkelen din er ikke med i lenken.
 
 For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la nettleseren stå.
 
-Over stasjonskortene står «Neste tog» med linje, retning og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
+Over stasjonskortene står «Neste tog» med linje, retning og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Trykk på linjemerket (for eksempel «R14 mot Asker») eller på sporlinja i kartet for å gå rett til valg av linje og retning. Hvert stasjonskort viser også neste avgang i motsatt retning. Kartet flytter seg aldri av seg selv, bare når du drar eller zoomer. Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
 
 Værmeldingen vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
 

@@ -23,10 +23,13 @@
   #app { display:flex; flex-direction:column; height:100vh; height:100dvh; }
   header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:8px 12px; background:var(--panel); position:relative; z-index:1200; }
   #kortWrap { display:flex; flex-direction:column; }
-  .kh { font-size:12px; color:var(--muted); font-weight:400; margin-bottom:3px; }
+  .kh { font-size:12px; color:var(--muted); font-weight:400; margin-bottom:4px; }
   .lb { display:inline-block; background:var(--prim); color:#fff; font-weight:700; font-size:12px; border-radius:5px; padding:0 6px; line-height:17px; letter-spacing:.02em; }
-  #lnDest { color:var(--text); font-weight:600; }
-  .wh { font-size:12px; color:var(--muted); font-weight:400; margin:1px 0 1px 2px; }
+  #ruteKnapp { display:inline-flex; align-items:center; gap:7px; padding:2px 9px 2px 3px; margin:0 6px 0 4px; border-radius:999px; background:var(--card); border:2px solid var(--prim); color:var(--text); font-size:14px; font-weight:600; vertical-align:middle; }
+  #ruteKnapp:hover { background:var(--btnh); }
+  #ruteKnapp .lb { font-size:14px; line-height:20px; padding:0 8px; border-radius:999px; }
+  h3.fokus { background:var(--btn); outline:2px solid var(--prim); border-radius:6px; padding:2px 6px; }
+  .wh { font-size:11px; color:var(--muted); font-weight:400; line-height:14px; margin:0 0 1px 0; }
   .wh b { color:var(--text); font-weight:600; }
   .valgtLinje { font-size:15px; margin:6px 0 10px; padding:8px 10px; border-radius:8px; background:var(--btn); border:1px solid var(--btnb); }
   .ln.valgt { background:var(--btn); border-radius:8px; }
@@ -36,14 +39,16 @@
   .card .l { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-weight:400; }
   .card .t { font-size:34px; font-weight:300; line-height:1.05; letter-spacing:-.5px; }
   .card .s { font-size:12px; color:var(--muted); min-height:16px; font-weight:400; }
+  .card .m { font-size:11px; color:var(--muted); font-weight:400; margin-top:2px; padding-top:2px; border-top:1px dashed var(--cardb); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }
+  .card .m b { color:var(--text); font-weight:600; } .card .m .late { color:var(--bad); font-weight:600; }
   .card .s .late { color:var(--bad); font-weight:600; } .card .s .ontime { color:var(--ok); font-weight:600; }
-  #weather { background:var(--card); border-radius:10px; padding:4px 8px; font-size:12px; color:var(--muted); }
+  #weather { background:var(--card); border-radius:10px; padding:3px 8px 4px; font-size:12px; color:var(--muted); }
   #wTab { border-collapse:collapse; font-size:12px; }
-  #wTab td, #wTab th { padding:1px 7px; text-align:center; font-weight:300; white-space:nowrap; color:var(--text); }
+  #wTab td, #wTab th { padding:0 6px; line-height:14px; text-align:center; font-weight:300; white-space:nowrap; color:var(--text); }
   #wTab th { font-weight:400; color:var(--muted); font-size:11px; }
   #wTab td.k, #wTab th.k { text-align:left; color:var(--muted); font-size:11px; font-weight:400; padding-left:0; }
-  #wTab img { width:24px; height:24px; vertical-align:middle; }
-  #wTab .tmp { font-size:15px; font-weight:400; }
+  #wTab img { width:20px; height:20px; vertical-align:middle; margin:0 1px 0 -4px; }
+  #wTab .tmp { font-size:14px; font-weight:400; line-height:21px; }
   #wTab .nb { color:var(--nb); }
   .right { margin-left:auto; display:flex; align-items:center; gap:10px; }
   #status { font-size:11px; color:var(--muted); text-align:right; max-width:260px; line-height:1.3; font-weight:400; }
@@ -65,11 +70,18 @@
   #map { flex:1; min-height:0; }
   #map.leaflet-container { background:var(--mapbg); }
   .mork { filter:invert(1) hue-rotate(170deg) brightness(.82) contrast(.95) saturate(.6); }
-  .trainIcon { position:relative; width:38px; height:38px; border-radius:50%; background:var(--accent2,#f2b705); border:3px solid #fff; display:flex; align-items:center; justify-content:center; color:#10200f; animation:puls 2s infinite; box-shadow:0 1px 4px rgba(0,0,0,.4); }
-  .trainIcon svg { width:24px; height:24px; }
-  .trainIcon .kode { position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); background:#10200f; color:#fff; border-radius:8px; padding:0 5px; font-size:10px; font-weight:700; line-height:14px; white-space:nowrap; }
+  .trainIcon { --ikbg:#f2b705; position:relative; width:40px; height:40px; border-radius:50%; background:var(--ikbg); border:3px solid #fff; display:flex; align-items:center; justify-content:center; color:#10200f; animation:puls 2s infinite; box-shadow:0 1px 4px rgba(0,0,0,.4); box-sizing:border-box; }
+  .trainIcon.bred { width:60px; height:42px; border-radius:21px; }
+  .trainIcon svg { width:24px; height:24px; overflow:visible; }
+  .trainIcon svg.side { width:42px; height:32px; margin-top:-2px; }
+  .trainIcon.snu svg.side { transform:scaleX(-1); }
+  .trainIcon .emo { font-size:24px; line-height:1; }
+  .trainIcon .roeyk circle { fill:#fff; stroke:rgba(0,0,0,.35); stroke-width:.5; opacity:0; transform-box:fill-box; transform-origin:center; animation:roeyk 2.4s infinite; }
+  .trainIcon .roeyk circle:nth-child(2) { animation-delay:.8s; } .trainIcon .roeyk circle:nth-child(3) { animation-delay:1.6s; }
+  @keyframes roeyk { 0% { opacity:0; transform:translate(0,2px) scale(.6); } 25% { opacity:.95; } 100% { opacity:0; transform:translate(-3px,-4px) scale(1.4); } }
+  .trainIcon .kode { position:absolute; bottom:-15px; left:50%; transform:translateX(-50%); background:#10200f; color:#fff; border-radius:8px; padding:0 5px; font-size:10px; font-weight:700; line-height:14px; white-space:nowrap; box-shadow:0 0 0 1px rgba(255,255,255,.7); }
   @keyframes puls { 0% { box-shadow:0 0 0 0 rgba(242,183,5,.7); } 70% { box-shadow:0 0 0 18px rgba(242,183,5,0); } 100% { box-shadow:0 0 0 0 rgba(242,183,5,0); } }
-  .trainIcon.other { background:#7d8f82; opacity:.85; animation:none; }
+  .trainIcon.other { --ikbg:#9aa79e; opacity:.9; animation:none; }
   .stnLabel { background:var(--stnbg); color:#fff; border:2px solid var(--stnbr); font-weight:600; font-size:14px; line-height:1.2; padding:2px 8px; border-radius:8px; text-align:center; }
   .stnLabel:before { display:none; }
   .stnLabel .tid { font-size:20px; font-weight:300; color:var(--stntid); }
@@ -85,6 +97,7 @@
     .right { order:-1; width:100%; justify-content:space-between; }
     #status { text-align:left; max-width:none; flex:1; }
     #kortWrap { width:100%; }
+    .card .m .vei { display:none; } .card .m { max-width:none; }
     .card { flex:1; min-width:0; padding:4px 10px; }
     .card .t { font-size:30px; }
     #weather { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -118,7 +131,7 @@
 <body>
 <div id="app">
   <header>
-    <div id="kortWrap"><div class="kh"><b>Neste tog</b> <span class="lb" id="lnKode"></span> <span id="lnDest"></span> · <span id="togNa">henter posisjon ...</span></div><div id="kort"></div></div>
+    <div id="kortWrap"><div class="kh"><b>Neste tog</b> <button id="ruteKnapp" title="Bytt linje eller retning"><span class="lb" id="lnKode"></span><span id="lnDest"></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button> <span id="togNa">henter posisjon ...</span></div><div id="kort"></div></div>
     <div id="weather">Henter vær ...</div>
     <div class="right">
       <div id="status">Starter ...</div>
@@ -146,7 +159,7 @@
     <input type="text" id="stnSok" placeholder="Søk etter stasjon eller holdeplass, f.eks. Fetsund" autocomplete="off">
     <div class="treff" id="stnTreff"></div>
 
-    <h3>2. Linje og retning</h3>
+    <h3 id="hLinje">2. Linje og retning</h3>
     <button id="finnLinjer">Finn linjer ved valgte stasjoner</button>
     <div class="hint" id="linjeInfo"></div>
     <div id="linjeListe"></div>
@@ -157,6 +170,7 @@
     <div class="treff" id="vaerTreff"></div>
 
     <h3>4. Utseende og kart</h3>
+    <div class="row"><select id="ikonValg" title="Ikon for toget"></select></div>
     <div class="row"><select id="temaValg"><option value="gronn">Lys grønn</option><option value="hvit">Hvit</option><option value="mork">Mørk</option></select></div>
     <div class="row"><select id="kartType"></select></div>
     <div class="row"><input type="text" id="keyInn" placeholder="MapTiler API-nøkkel (lagres bare i denne nettleseren)" autocomplete="off"></div>
@@ -175,7 +189,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.min.js"></script>
-<script src="config.js?v=6"></script>
-<script src="app.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
