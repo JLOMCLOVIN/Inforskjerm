@@ -42,7 +42,8 @@ function eksempelRuter() {
 }
 function tilRute(k, D, gang) {      // demokandidat til lagret rute
   const sted = id => D.steder.find(s => s.id === id) || { id, navn: "" };
-  return { linje: klone(D.linjer[k.linje]), fra: { id: k.fra, navn: sted(k.fra).navn }, til: { id: k.til, navn: sted(k.til).navn },
+  const st = id => { const x = sted(id); return { id, navn: x.navn, lat: x.lat, lon: x.lon }; };
+  return { linje: klone(D.linjer[k.linje]), fra: st(k.fra), til: st(k.til),
            fraQuay: klone(k.fraQuay), tilQuay: klone(k.tilQuay), reise: k.reise, gang };
 }
 /* Temaet er felles med togsiden og ligger i togsidens innstillinger. Uten valgt tema følger siden enheten (lys eller mørk). */
@@ -50,13 +51,14 @@ function felleTema() { try { const t = JSON.parse(localStorage.getItem("togskjer
 function lagreFelleTema(t) {
   try { const o = JSON.parse(localStorage.getItem("togskjerm.v1") || "{}") || {}; o.tema = t; localStorage.setItem("togskjerm.v1", JSON.stringify(o)); } catch (e) {}
 }
-const STANDARD = () => ({ ruter: eksempelRuter(), sortering: "maal" });
+const STANDARD = () => ({ ruter: eksempelRuter(), sortering: "maal", visVaer: true });
 
 function normaliser(o) {
   const s = Object.assign(STANDARD(), o || {});
   s.ruter = (Array.isArray(s.ruter) ? s.ruter : []).filter(r => r && r.linje && trygId(r.linje.id) && r.fraQuay && trygId(r.fraQuay.id) && r.tilQuay && trygId(r.tilQuay.id)).slice(0, MAKS);
   s.ruter.forEach(r => { const g = parseInt(r.gang, 10); r.gang = isFinite(g) && g > 0 ? Math.min(g, 180) : 0; });
   delete s.tema;
+  s.visVaer = s.visVaer !== false;
   if (!["maal", "rekkefolge", "grupper", "tid"].includes(s.sortering)) s.sortering = "maal";
   return s;
 }
@@ -84,13 +86,13 @@ async function gql(q) {
 async function geokode(tekst) {
   if (DEMO) {
     const t = tekst.toLowerCase();
-    return window.BY_DEMO.steder.filter(s => s.navn.toLowerCase().includes(t)).map(s => ({ id: s.id, navn: s.navn, label: s.label }));
+    return window.BY_DEMO.steder.filter(s => s.navn.toLowerCase().includes(t)).map(s => ({ id: s.id, navn: s.navn, label: s.label, lat: s.lat, lon: s.lon }));
   }
   const u = `${URL_GEO}?text=${encodeURIComponent(tekst)}&size=8&lang=no&layers=venue&focus.point.lat=59.91&focus.point.lon=10.75`;
   const res = await fetch(u, { headers: { "ET-Client-Name": CFG.clientName } });
   if (!res.ok) throw new Error("HTTP " + res.status);
   return ((await res.json()).features || []).filter(f => String(f.properties.id || "").startsWith("NSR:StopPlace:"))
-    .map(f => ({ id: f.properties.id, navn: f.properties.name, label: f.properties.label }));
+    .map(f => ({ id: f.properties.id, navn: f.properties.name, label: f.properties.label, lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] }));
 }
 
 /* Henter avganger fra hele avreisestedet og ankomster ved målet for alle ruter i ett kall.
@@ -250,7 +252,96 @@ function tegn() {
   }
   el.querySelectorAll(".lbx").forEach(b => b.onclick = apne);
   tegnStatus();
+  tilpassZoom();
 }
+/* ---------- Større kort på store skjermer ----------
+   Finner største forstørrelse (opptil 2x) der alt fortsatt får plass i høyden, så skjermen brukes best mulig. */
+let zoomNokkel = "";
+const passer = () => document.documentElement.scrollHeight <= window.innerHeight + 1;
+function tilpassZoom() {
+  const main = $("ruter"), topp = document.querySelector("header");
+  const sett = z => { main.style.zoom = z; topp.style.zoom = z; };      // toppen forstørres like mye, så klokke og vær også blir større
+  if (window.innerWidth < 1000 || !S.ruter.length) { sett(""); zoomNokkel = ""; return; }
+  const nokkel = [window.innerWidth, window.innerHeight, S.ruter.length, S.sortering, S.visVaer].join("|");
+  if (nokkel === zoomNokkel && passer()) return;
+  zoomNokkel = nokkel;
+  sett(1);
+  if (!passer()) return;
+  let lo = 1, hi = 2;
+  for (let k = 0; k < 8; k++) { const mid = (lo + hi) / 2; sett(mid); if (passer()) lo = mid; else hi = mid; }
+  sett(lo);
+}
+window.addEventListener("resize", () => { zoomNokkel = ""; tilpassZoom(); });
+
+/* ---------- Vær de neste 90 minuttene (MET Nowcast, radar) ---------- */
+const URL_NOWCAST = "https://api.met.no/weatherapi/nowcast/2.0/complete";
+let vaer = null, vaerFeil = null;
+function vaerSted() {
+  const r = S.ruter.find(x => x.fra && isFinite(x.fra.lat) && isFinite(x.fra.lon));
+  if (r) return { navn: r.fra.navn, lat: r.fra.lat, lon: r.fra.lon };
+  try { const v = JSON.parse(localStorage.getItem("togskjerm.v1") || "{}").vaer; if (v && isFinite(v.lat)) return { navn: v.navn, lat: v.lat, lon: v.lon }; } catch (e) {}
+  return { navn: "Oslo", lat: 59.91, lon: 10.75 };
+}
+function demoNowcast() {      // eksempel: oppholdsvær nå, en lett byge om drøyt en halvtime
+  const t0 = Math.floor(Date.now() / 300000) * 300000;
+  const rate = [0, 0, 0, 0, 0, 0, 0, 0.2, 0.6, 1.2, 1.6, 0.9, 0.4, 0.1, 0, 0, 0, 0, 0];
+  return { properties: { meta: { radar_coverage: "ok" }, timeseries: rate.map((p, i) => ({ time: new Date(t0 + i * 300000).toISOString(),
+    data: i === 0 ? { instant: { details: { air_temperature: 7.4, wind_speed: 3.6, precipitation_rate: p } }, next_1_hours: { summary: { symbol_code: "partlycloudy_day" } } }
+                  : { instant: { details: { precipitation_rate: p } } } })) } };
+}
+async function hentVaer() {
+  if (!S.visVaer) return;
+  const sted = vaerSted();
+  try {
+    let j;
+    if (DEMO) j = demoNowcast();
+    else {
+      const res = await fetch(`${URL_NOWCAST}?lat=${Number(sted.lat).toFixed(4)}&lon=${Number(sted.lon).toFixed(4)}`);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      j = await res.json();
+    }
+    const ts = j.properties.timeseries || [], naa = Date.now();
+    const forste = ts[0] && ts[0].data || {};
+    const punkter = ts.filter(t => Date.parse(t.time) > naa - 300000).slice(0, 19)
+      .map(t => ({ t: Date.parse(t.time), p: (t.data.instant.details.precipitation_rate || 0) }));
+    vaer = { sted, radar: (j.properties.meta || {}).radar_coverage === "ok", punkter,
+             temp: (forste.instant || {}).details && forste.instant.details.air_temperature,
+             vind: (forste.instant || {}).details && forste.instant.details.wind_speed,
+             symbol: forste.next_1_hours && forste.next_1_hours.summary && forste.next_1_hours.summary.symbol_code };
+    vaerFeil = null;
+  } catch (e) { vaerFeil = e.message; console.warn(e); }
+  tegnVaer();
+}
+function vaerTekst(v) {
+  if (!v.radar) return "Radar utilgjengelig her";
+  const p = v.punkter, regn = x => x.p >= 0.1;
+  const ord = (isFinite(v.temp) && v.temp <= 0) ? "Snø" : "Regn";
+  const maks = Math.max(0, ...p.map(x => x.p));
+  const styrke = maks < 0.5 ? "Lett " + ord.toLowerCase() : maks < 2.5 ? ord : "Kraftig " + ord.toLowerCase();
+  if (!p.some(regn)) return "Opphold de neste 90 min";
+  if (regn(p[0])) { const slutt = p.find(x => !regn(x)); return slutt ? `${styrke} nå, opphold fra ca. ${hhmm(slutt.t)}` : `${styrke} de neste 90 min`; }
+  const start = p.find(regn), slutt = p.slice(p.indexOf(start)).find(x => !regn(x));
+  return `${styrke} fra ca. ${hhmm(start.t)}${slutt ? ` til ${hhmm(slutt.t)}` : ""}`;
+}
+function tegnVaer() {
+  const el = $("vaer90");
+  el.hidden = !S.visVaer;
+  $("btnVaer").textContent = S.visVaer ? "Skjul vær" : "Vis vær";
+  if (!S.visVaer) return;
+  if (!vaer) { el.innerHTML = `<div class="v90tekst">${vaerFeil ? "Vær utilgjengelig" : "Henter vær ..."}</div>`; return; }
+  const v = vaer, n = v.punkter.length;
+  const stolper = v.punkter.map(x => { const h = x.p < 0.05 ? 0 : Math.max(10, Math.min(100, Math.sqrt(x.p / 5) * 100));
+    return `<i style="height:${h}%" title="${hhmm(x.t)}: ${String(Math.round(x.p * 10) / 10).replace(".", ",")} mm/t"></i>`; }).join("");
+  el.innerHTML = `
+    <div class="v90na">${v.symbol ? `<img alt="" src="https://cdn.jsdelivr.net/gh/metno/weathericons@main/weather/svg/${esc(v.symbol)}.svg" onerror="this.style.display='none'">` : ""}
+      <span class="v90t">${isFinite(v.temp) ? Math.round(v.temp) + "&deg;" : ""}</span>${isFinite(v.vind) ? `<span class="v90v">${Math.round(v.vind)} m/s</span>` : ""}</div>
+    <div class="v90graf" aria-label="Nedbør de neste 90 minuttene">
+      <div class="stolper">${v.radar && n ? stolper : ""}</div>
+      <div class="akse"><span>nå</span><span>30</span><span>60</span><span>90 min</span></div>
+    </div>
+    <div class="v90tekst"><span>Nedbør ved ${esc(v.sted.navn)}</span><b>${esc(vaerTekst(v))}</b></div>`;
+}
+
 function tegnKlokke() {
   const d = new Date(), el = $("klokke"); if (!el) return;
   el.innerHTML = `${hhmm(d)}<span class="sek">:${String(d.getSeconds()).padStart(2, "0")}</span>`;
@@ -297,7 +388,7 @@ async function finnRuter(fra, til) {
     if (!m.has(key)) {
       const l = sj.line, p = l.presentation || {};
       m.set(key, { linje: { id: l.id, kode: l.publicCode, modus: String(l.transportMode || "").toLowerCase(), farge: p.colour, tekstfarge: p.textColour },
-        fra: { id: fra.id, navn: fra.navn }, til: { id: til.id, navn: til.navn },
+        fra: { id: fra.id, navn: fra.navn, lat: fra.lat, lon: fra.lon }, til: { id: til.id, navn: til.navn, lat: til.lat, lon: til.lon },
         fraQuay: { id: c.quay.id, kode: c.quay.publicCode || "", beskr: c.quay.description || "" }, tilQuay: { id: qs[j].id, kode: qs[j].publicCode || "" },
         reiser: [], dest: new Set(), antall: 0, gang: 0 });
     }
@@ -401,15 +492,18 @@ $("btnSort").onclick = () => { if (S.sortering !== "tid") { sistSortering = S.so
 $("btnFs").onclick = () => { const d = document.documentElement; document.fullscreenElement ? document.exitFullscreen() : (d.requestFullscreen || d.webkitRequestFullscreen).call(d); $("meny").classList.remove("vis"); };
 let sistSortering = "maal";
 function settSortKnapp() { $("btnSort").textContent = S.sortering === "tid" ? "Grupper igjen" : "Sorter etter første avgang"; }
+$("btnVaer").onclick = () => { S.visVaer = !S.visVaer; lagre(S); $("meny").classList.remove("vis"); zoomNokkel = ""; tegnVaer(); if (S.visVaer) hentVaer(); tegn(); };
 function bruk() {
   const t = felleTema(); if (t) document.body.dataset.tema = t; else delete document.body.dataset.tema;
   settSortKnapp();
   data = []; sistOk = null; feil = null;
+  vaer = null; tegnVaer(); hentVaer();
   tegn(); oppdater();
 }
 if (DEMO) { document.body.classList.add("demo"); }
 bruk();
 setInterval(oppdater, INTERVALL * 1000);
+setInterval(hentVaer, 5 * 60000);      // radarvarselet oppdateres hvert 5. minutt
 setInterval(tegn, 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) oppdater(); });
 try { if (navigator.wakeLock) navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {}

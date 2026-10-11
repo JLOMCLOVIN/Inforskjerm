@@ -372,8 +372,14 @@ function settVaerSynlig() {
   $("weather").style.display = S.visVaer ? "" : "none";
   $("btnVaer").textContent = S.visVaer ? "Skjul værmelding" : "Vis værmelding";
 }
+function tilpassVaerHoyde() {   // værtabellen like høy som stasjonskortene på brede skjermer
+  const w = $("weather"), k = $("kort");
+  if (!w || !k) return;
+  const h = window.innerWidth > 760 && S.visVaer ? k.offsetHeight : 0;
+  w.style.height = h ? h + "px" : "";
+}
 function tegnKort() {
-  tegnKlokke();
+  tegnKlokke(); tilpassVaerHoyde();
   tegnTogNa();
   const naa = Date.now();
   S.stasjoner.forEach((s, i) => {

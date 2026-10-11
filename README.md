@@ -57,7 +57,7 @@ For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la net
 
 Over stasjonskortene står «Neste tog» med linje, retning og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Trykk på linjemerket (for eksempel «R14 mot Asker») eller på sporlinja i kartet for å gå rett til valg av linje og retning. Hvert stasjonskort viser også neste avgang i motsatt retning. Kartet flytter seg aldri av seg selv, bare når du drar eller zoomer. Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
 
-Værmeldingen viser neste hele time og deretter annenhver time, omtrent 15 timer fram. Den vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
+Værmeldingen er like høy som stasjonskortene og viser neste hele time og deretter annenhver time, omtrent 15 timer fram. Den vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
 
 ## Kjente forbehold
 
@@ -75,6 +75,8 @@ Fanen «By» øverst bytter til `by.html`. Der ser du inntil 12 ruter som kort, 
 - Gangtid kan settes per rute, som på togsiden.
 - Kortene grupperes etter hvor du skal («Til Jernbanetorget»). Hvert kort viser retningen med stor skrift og holdeplass og plattform eller spor med liten skrift under. Gruppene legges ved siden av hverandre når skjermen er bred nok, og kortene fyller hele bredden. Under Innstillinger kan du i stedet gruppere etter hvor du reiser fra, eller vise fra og til på hvert kort i din egen rekkefølge. I tannhjulmenyen kan du sortere etter første avgang.
 - `by.html?demo` viser eksempeldata uten nett, nyttig for å teste utseendet.
+- Øverst vises været de neste 90 minuttene fra MET sitt radarvarsel (nowcast): temperatur, vind, nedbør per 5. minutt og en kort tekst som «Regn fra ca. 20.05». Stedet er første rute sitt avreisested. Skjul det i tannhjulmenyen.
+- På store skjermer forstørres kortene automatisk så de fyller skjermen.
 - Bysiden har egne ruter og egen delelenke, men temaet (lys grønn, hvit eller mørk) er felles med togsiden.
 - Flyttes neste avgang til en annen plattform, blir plattformen rød på kortet.
 

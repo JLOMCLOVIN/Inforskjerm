@@ -6,12 +6,12 @@
 <title>Byskjerm</title>
 <style>
   /* Kort i rutenett, gruppert etter mål. Lys grønn som grunn, mørk når enheten bruker mørkt tema, eller når temaet velges i innstillingene. */
-  :root { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; } }
-  :root[data-theme="dark"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
-  body[data-tema="gronn"] { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); color-scheme:light; }
-  body[data-tema="hvit"] { --bg:#ffffff; --panel:#f3f5f3; --card:#ffffff; --cardb:#dde3de; --text:#1c2420; --muted:#66736b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#ffffff; --btnb:#cdd5cf; --btnh:#edf0ed; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --avbg:#fdf3e2; --avln:#ead9b4; --shadow:rgba(0,0,0,.18); color-scheme:light; }
-  body[data-tema="mork"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
+  :root { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --nb:#1d5fb0; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --nb:#7fb8ff; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; } }
+  :root[data-theme="dark"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --nb:#7fb8ff; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
+  body[data-tema="gronn"] { --bg:#e3eedf; --panel:#cfe3ca; --card:#f1f8ee; --cardb:#b5d2b4; --text:#17301f; --muted:#52705b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#f1f8ee; --btnb:#9cc2a3; --btnh:#e0efdb; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --nb:#1d5fb0; --avbg:#fdf1dc; --avln:#e6cf9f; --shadow:rgba(30,60,40,.25); color-scheme:light; }
+  body[data-tema="hvit"] { --bg:#ffffff; --panel:#f3f5f3; --card:#ffffff; --cardb:#dde3de; --text:#1c2420; --muted:#66736b; --accent:#a8480a; --ok:#1d7a3b; --bad:#c0392b; --btn:#ffffff; --btnb:#cdd5cf; --btnh:#edf0ed; --prim:#2f7d4a; --primb:#1f5c35; --inp:#ffffff; --nb:#1d5fb0; --avbg:#fdf3e2; --avln:#ead9b4; --shadow:rgba(0,0,0,.18); color-scheme:light; }
+  body[data-tema="mork"] { --bg:#0f1b14; --panel:#16261c; --card:#1d3326; --cardb:transparent; --text:#f1f5ee; --muted:#8fa797; --accent:#f2b705; --ok:#58c47a; --bad:#ff6b5b; --btn:#24402f; --btnb:#35573f; --btnh:#2d5139; --prim:#2f7d4a; --primb:#58c47a; --inp:#0f1b14; --nb:#7fb8ff; --avbg:#2b1f12; --avln:#4a3820; --shadow:rgba(0,0,0,.5); color-scheme:dark; }
   * { box-sizing:border-box; }
   html { margin:0; }
   body { min-height:100vh; margin:0; background:var(--bg); color:var(--text); font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif; font-weight:300; }
@@ -35,6 +35,20 @@
   #meny.vis { display:flex; } #meny button { text-align:left; width:100%; }
 
   main { padding:10px 14px 18px; }
+
+  /* Vær de neste 90 minuttene: nå-verdier, nedbørsstolper per 5. minutt, og en kort tekst */
+  #vaer90 { display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--cardb); border-radius:10px; padding:5px 12px; min-width:0; }
+  #vaer90[hidden] { display:none; }
+  .v90na { display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  .v90na img { width:34px; height:34px; }
+  .v90t { font-size:26px; font-weight:300; font-variant-numeric:tabular-nums; }
+  .v90v { font-size:12px; color:var(--muted); font-weight:400; }
+  .v90graf { width:180px; flex:none; }
+  .stolper { height:34px; display:flex; align-items:flex-end; gap:2px; border-bottom:1px solid var(--btnb); }
+  .stolper i { flex:1; background:var(--nb); border-radius:2px 2px 0 0; }
+  .akse { display:flex; justify-content:space-between; font-size:10px; color:var(--muted); font-weight:400; margin-top:1px; }
+  .v90tekst { display:flex; flex-direction:column; font-size:12px; color:var(--muted); font-weight:400; line-height:1.3; min-width:0; }
+  .v90tekst b { color:var(--text); font-size:14px; font-weight:600; }
   section h2 { font-size:15px; font-weight:600; color:var(--text); margin:10px 2px 6px; }
   /* Hele bredden brukes: grupper legges ved siden av hverandre når de får plass, og kortene strekkes til å fylle raden */
   .rutenett { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap:10px; }
@@ -114,6 +128,7 @@
     header { padding:6px 10px; gap:6px; }
     #venstre { gap:8px; } .right { gap:8px; flex:1; justify-content:flex-end; } #status { text-align:right; max-width:150px; } #klokke { font-size:28px; } #klokke .sek { font-size:14px; }
     #status { max-width:120px; }
+    #vaer90 { order:5; width:100%; gap:4px 10px; padding:4px 10px; flex-wrap:wrap; } .v90graf { flex:1; width:auto; min-width:150px; } .v90tekst { flex-basis:100%; } .v90tekst span { display:none; }
     main { padding:8px 8px 14px; }
     .rutenett { grid-template-columns:1fr; gap:8px; }
     .om { font-size:34px; min-width:56px; }
@@ -124,12 +139,14 @@
 <body>
 <header>
   <div id="venstre"><div id="klokke">--:--</div><nav class="faner"><a href="index.html" id="faneTog">Tog</a><a href="by.html" class="aktiv">By</a></nav></div>
+  <div id="vaer90" hidden></div>
   <div class="right">
     <div id="status">Starter ...</div>
     <button id="btnGear" aria-label="Meny" title="Meny"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>
   <div id="meny">
     <button id="btnSort">Sorter etter første avgang</button>
+    <button id="btnVaer">Skjul vær</button>
     <button id="btnFs">Fullskjerm</button>
     <button id="btnSet">Innstillinger</button>
   </div>
@@ -174,6 +191,6 @@
 
 <script src="config.js?v=8"></script>
 <script src="by-demo.js?v=2"></script>
-<script src="by.js?v=8"></script>
+<script src="by.js?v=9"></script>
 </body>
 </html>
