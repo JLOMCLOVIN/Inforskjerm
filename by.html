@@ -108,6 +108,27 @@
   .tom, .tomside { color:var(--muted); font-size:14px; padding:6px 0; }
   .tomside { text-align:center; padding:60px 0; }
 
+  /* Strekninger og plattformer i innstillingene */
+  .lchips { display:flex; flex-wrap:wrap; gap:4px; margin-top:3px; }
+  .lchip { padding:0; border:0; background:none; border-radius:7px; }
+  .lchip.av .lbs { opacity:.35; text-decoration:line-through; }
+  .hp { border:1px solid var(--btnb); border-radius:10px; padding:8px 10px; margin:6px 0 10px; }
+  .hpTopp { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
+  .plfTab { width:100%; border-collapse:collapse; font-size:13px; }
+  .plfTab th { text-align:left; font-weight:500; color:var(--muted); font-size:11px; padding:3px 6px; border-bottom:1px solid var(--btnb); }
+  .plfTab td { padding:4px 6px; border-bottom:1px solid var(--btn); vertical-align:top; }
+  .plfTab td small { color:var(--muted); }
+  .plfTab input[type=number] { width:52px; padding:2px 4px; border-radius:6px; border:1px solid var(--btnb); background:var(--inp); color:var(--text); font-size:14px; font-family:inherit; text-align:right; }
+  .plfTab input[type=checkbox] { width:18px; height:18px; }
+  .plfTab input::placeholder, .gangInn input::placeholder { color:var(--muted); opacity:.55; }
+  .plfTab tr.avslatt td { opacity:.45; } .plfTab tr.avslatt td:last-child { opacity:1; }
+  .nytag { background:var(--bad); color:#fff; border-radius:4px; padding:0 4px; font-size:10px; font-weight:700; text-transform:uppercase; }
+  /* Raskest fram */
+  .rk { position:relative; }
+  .rask { position:absolute; top:-9px; right:12px; font-size:10.5px; line-height:16px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#fff; background:var(--prim); border-radius:6px; padding:2px 7px; }
+  .rk.raskest { box-shadow:0 0 0 2px var(--prim); }
+  section h2 .fra { font-size:13px; font-weight:400; color:var(--muted); margin-left:4px; }
+  .rk.tomkort { border-left-color:var(--btnb); justify-content:center; }
   /* Innstillinger */
   #dlg { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,.6); display:none; align-items:flex-start; justify-content:center; overflow:auto; padding:20px; }
   #dlg.vis { display:flex; }
@@ -162,31 +183,32 @@
 <div id="dlg">
   <div class="box">
     <h2>Innstillinger</h2>
-    <div class="hint">Velg inntil 12 ruter. En rute er én linje fra én plattform til et sted. Valgene lagres i nettleseren.</div>
+    <div class="hint">Velg inntil 12 strekninger. Alle linjer som går direkte på en strekning kommer med av seg selv. Valgene lagres i nettleseren.</div>
 
-    <h3>1. Mine ruter (<span id="antall"></span>)</h3>
-    <div class="hint">Skriv gangtid i minutter til plattformen, så viser kortet når du må gå, og om du må løpe.</div>
-    <div id="valgte"></div>
-
-    <h3>2. Legg til ruter</h3>
+    <h3>1. Strekninger (<span id="antall"></span>)</h3>
+    <div class="hint">Trykk på et linjemerke for å skjule linja på den strekningen.</div>
+    <div id="strListe"></div>
     <div class="row">
       <div class="kol"><input type="text" id="fraSok" placeholder="Fra, f.eks. Carl Berners plass" autocomplete="off"><div id="fraValgt"></div><div class="treff" id="fraTreff"></div></div>
       <button id="byttRetning" title="Bytt fra og til">⇄</button>
       <div class="kol"><input type="text" id="tilSok" placeholder="Til, f.eks. Jernbanetorget" autocomplete="off"><div id="tilValgt"></div><div class="treff" id="tilTreff"></div></div>
     </div>
-    <div class="row"><button id="finn">Finn direkte ruter</button></div>
+    <div class="row"><button id="leggTil">Legg til strekning</button></div>
     <div class="hint" id="finnInfo"></div>
-    <div id="kand"></div>
+
+    <h3>2. Holdeplasser og plattformer</h3>
+    <div class="hint">Gangtid i minutter fra der skjermen står. Tom gangtid bruker standarden for holdeplassen. Kryss av for «Bruk ikke» på plattformer du aldri går til, for eksempel et stopp som ligger feil vei. Da brukes et annet stopp for samme buss.</div>
+    <div id="hpListe"></div>
 
     <h3>3. Utseende</h3>
     <div class="hint">Temaet er felles med togsiden.</div>
     <div class="row">
       <div class="kol"><select id="temaValg"><option value="gronn">Lys grønn</option><option value="hvit">Hvit</option><option value="mork">Mørk</option></select></div>
-      <div class="kol"><select id="sortValg"><option value="maal">Grupper etter hvor du skal</option><option value="rekkefolge">Min rekkefølge, fra-sted på hvert kort</option><option value="grupper">Grupper etter hvor du reiser fra</option><option value="tid">Sorter etter første avgang</option></select></div>
+      <div class="kol"><select id="sortValg"><option value="strekning">Grupper etter strekning, raskest fram først</option><option value="tid">Alle kort sortert etter første avgang</option></select></div>
     </div>
 
     <div class="foot">
-      <button id="dlgReset">Eksempelruter</button>
+      <button id="dlgReset">Eksempeloppsett</button>
       <button id="dlgLink">Kopier lenke</button>
       <button id="dlgCancel">Avbryt</button>
       <button id="dlgSave" class="primary">Lagre</button>
@@ -196,7 +218,7 @@
 </div>
 
 <script src="config.js?v=8"></script>
-<script src="by-demo.js?v=2"></script>
-<script src="by.js?v=11"></script>
+<script src="by-demo.js?v=4"></script>
+<script src="by.js?v=13"></script>
 </body>
 </html>

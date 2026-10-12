@@ -70,16 +70,18 @@ Værmeldingen er like høy som stasjonskortene og viser neste hele time og deret
 
 ## Bysiden (buss, trikk og T-bane)
 
-Fanen «By» øverst bytter til `by.html`. Der ser du inntil 12 ruter som kort, uten kart. En rute er én linje fra én plattform til et sted, for eksempel T-bane 5 fra spor 2 på Carl Berners plass til Jernbanetorget.
+Fanen «By» øverst bytter til `by.html`. Der velger du inntil 12 strekninger, for eksempel «Carl Berners plass → Jernbanetorget». Siden finner selv alle linjer som går direkte på strekningen, hver gang den oppdaterer. Nye linjer, omlegginger og plattformbytter kommer med av seg selv.
 
-- Legg til ruter under Innstillinger: velg Fra og Til, trykk «Finn direkte ruter», kryss av og trykk «Legg til valgte». Listen viser plattform, retning, reisetid og hvor ofte linja går.
-- Hvert kort viser neste avgang (minutter eller klokkeslett), når du er fremme, de neste avgangene og eventuelle avvik. «ca.» betyr ruteplan uten sanntid.
-- Gangtid kan settes per rute, som på togsiden.
-- Kortene grupperes etter hvor du skal («Til Jernbanetorget»), og hver gruppe står i sin egen ramme. Hvert kort viser retningen med stor skrift og holdeplass og plattform eller spor med liten skrift under. Gruppene legges ved siden av hverandre når skjermen er bred nok, og kortene fyller hele bredden. Under Innstillinger kan du i stedet gruppere etter hvor du reiser fra, eller vise fra og til på hvert kort i din egen rekkefølge. I tannhjulmenyen kan du sortere etter første avgang.
-- `by.html?demo` viser eksempeldata uten nett, nyttig for å teste utseendet.
-- Øverst vises været de neste 90 minuttene fra MET sitt radarvarsel (nowcast): temperatur, vind, nedbør per 5. minutt og en kort tekst som «Regn fra ca. 20.05». Stedet er første rute sitt avreisested. Skjul det i tannhjulmenyen.
-- På store skjermer forstørres kortene automatisk så de fyller skjermen.
-- Bysiden har egne ruter og egen delelenke, men temaet (lys grønn, hvit eller mørk) er felles med togsiden.
-- Flyttes neste avgang til en annen plattform, blir plattformen rød på kortet.
+- Hver strekning står i sin egen ramme med ett kort per linje. Kortene sorteres etter når du er fremme med den første avgangen du rekker, og den beste er merket «Raskest fram».
+- Under Innstillinger, «Holdeplasser og plattformer», setter du gangtid per plattform (tom gangtid bruker standarden for holdeplassen). Kryss av for «Bruk ikke» på plattformer du aldri går til.
+- Stopper en linje flere ganger på samme holdeplass (som buss 21 på Carl Berners plass, først B og så H), velger siden stoppet som lar deg gå hjemmefra senest, og aldri et stopp du har slått av.
+- Ringbanen og andre omveier skjules: en tur som tar mer enn dobbelt så lang tid som den raskeste forbindelsen pluss fem minutter vises ikke.
+- Trykk på et linjemerke i innstillingene for å skjule en linje på en strekning.
+- Plattformer siden ikke kjente fra før merkes «ny», både på kortet og i innstillingene.
+- Øverst vises været de neste 90 minuttene fra MET sitt radarvarsel. Stedet er første strekning sitt avreisested. Skjul det i tannhjulmenyen.
+- På store skjermer forstørres alt automatisk så det fyller skjermen.
+- Temaet er felles med togsiden. Strekningene og delelenken er egne for bysiden.
+- Har du brukt bysiden før, gjøres de gamle rutene om til strekninger, og gangtidene flyttes til plattformene.
+- `by.html?demo` viser eksempeldata uten nett.
 
 Last opp alle filene fra zip-filen, også `by.html`, `by.js` og `by-demo.js`, sammen med de andre.

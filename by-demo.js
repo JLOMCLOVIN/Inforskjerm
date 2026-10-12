@@ -52,3 +52,34 @@ window.BY_DEMO = {
       ["15:24:00","15:24:00",1,0,"Ringen via Majorstuen","15:44:00"], ["15:39:00","15:39:30",1,0,"Sognsvann","15:59:30"], ["15:54:00","15:54:00",0,0,"Ringen via Majorstuen","16:14:00"]]
   }
 };
+
+/* Oppsett for strekninger (versjon 2 av bysiden). Plattformene på Carl Berners plass og linjene som bruker dem er hentet fra Entur 11. og 12. oktober 2026.
+   Linje 21 mot Tjuvholmen stopper først på B (Carl Berners plass T) og tre minutter senere på H. B er slått av som eksempel på et stopp man ikke vil bruke. Gangtidene er eksempelverdier. */
+window.BY_DEMO.strekninger = [
+  { fra: "NSR:StopPlace:58189", til: "NSR:StopPlace:58366" },
+  { fra: "NSR:StopPlace:58366", til: "NSR:StopPlace:58189" }
+];
+window.BY_DEMO.plattformer = {
+  "NSR:StopPlace:58189": [
+    { id: "NSR:Quay:11027", kode: "2", beskr: "Retning sentrum", linjer: ["T-bane 5 mot Sognsvann via Tøyen", "T-bane 5 mot Ringen via Tøyen"] },
+    { id: "NSR:Quay:11026", kode: "1", beskr: "Retning Storo/Vestli", linjer: ["T-bane 5 mot Vestli", "T-bane 5 mot Ringen via Storo"] },
+    { id: "NSR:Quay:11036", kode: "F", beskr: "", linjer: ["Buss 31 mot Fornebu", "Buss 31 mot Snarøya"] },
+    { id: "NSR:Quay:11037", kode: "C", beskr: "", linjer: ["Buss 31", "Buss 380", "Buss 390"] },
+    { id: "NSR:Quay:11044", kode: "E", beskr: "", linjer: ["Trikk 17 mot Gaustadalléen"] },
+    { id: "NSR:Quay:11043", kode: "D", beskr: "", linjer: ["Trikk 17"] },
+    { id: "NSR:Quay:11090", kode: "A", beskr: "", linjer: ["Buss 21 mot Helsfyr"] },
+    { id: "NSR:Quay:11089", kode: "B", beskr: "", linjer: ["Buss 21 mot Tjuvholmen"] },
+    { id: "NSR:Quay:11048", kode: "H", beskr: "", linjer: ["Buss 20", "Buss 21 mot Tjuvholmen", "Buss 26"] },
+    { id: "NSR:Quay:11049", kode: "J", beskr: "", linjer: ["Buss 20", "Buss 21 mot Helsfyr"] }
+  ],
+  "NSR:StopPlace:58366": [
+    { id: "NSR:Quay:7183", kode: "1", beskr: "Retning øst", linjer: ["T-bane 5 mot Vestli", "T-bane 5 mot Ringen via Tøyen"] },
+    { id: "NSR:Quay:7184", kode: "2", beskr: "Retning vest", linjer: ["T-bane 5 mot Sognsvann", "T-bane 5 mot Ringen via Majorstuen"] },
+    { id: "NSR:Quay:7202", kode: "D", beskr: "", linjer: ["Buss 31 mot Tonsenhagen", "Buss 31 mot Grorud T"] },
+    { id: "NSR:Quay:7175", kode: "E", beskr: "", linjer: ["Trikk 17 mot Sinsen-Grefsen st."] }
+  ]
+};
+window.BY_DEMO.holdeplasser = {
+  "NSR:StopPlace:58189": { standard: 5, plf: { "NSR:Quay:11027": { gang: 6 }, "NSR:Quay:11036": { gang: 4 }, "NSR:Quay:11089": { av: true } } },
+  "NSR:StopPlace:58366": { standard: 0, plf: {} }
+};
