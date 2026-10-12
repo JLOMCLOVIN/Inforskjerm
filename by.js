@@ -219,7 +219,7 @@ function koble(cfg, st, dep, arr) {
     const ankomster = (ankPerTur.get(sj) || []).sort((p, q) => p - q);
     let brukt = -Infinity;
     ankomster.forEach(t => {
-      const kand = avganger.filter(d => d.e < t && d.e > brukt);
+      const kand = avganger.filter(d => d.e < t && d.e > brukt && t - d.e < 4 * 3600000);      // samme tur-ID går hver dag: ikke koble mot morgendagens tur
       if (!kand.length) return;
       const best = kand.reduce((b, d) => ((d.e - d.g) > (b.e - b.g) || ((d.e - d.g) === (b.e - b.g) && d.e > b.e)) ? d : b);
       reiser.push(Object.assign({}, best, { fremme: t }));

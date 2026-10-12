@@ -45,7 +45,7 @@ Mangler du valget «Deploy from a branch», er repoet som regel privat. På en g
 Trykk tannhjulet øverst til høyre. Der ligger knappene Kart, Alle, Fullskjerm og Innstillinger. Under Innstillinger velger du:
 
 1. Stasjoner eller holdeplasser (opptil tre), med gangtid i minutter til hver. Da viser kortet «Gå kl ...», «Gå om X min», «Gå nå!», «Løp!» (regner med at løping tar omtrent 60 % av gangtiden) eller «Rekker ikke» med neste tog.
-2. Linje og retning. Trykk «Finn linjer», velg linje og deretter én retning. Destinasjoner i samme retning (for eksempel Oslo S og Asker) er slått sammen.
+2. Hvor du skal, for eksempel Oslo S. Alle tog som går direkte fra stasjonene dine dit kommer med av seg selv (også buss for tog), og retningen følger av målet. Innstillingene viser hvilke linjer som går.
 3. Sted for værmeldingen.
 4. Ikon for toget (damplok med røyk er standard, ellers damplok, damplok forfra, emoji eller moderne tog), utseende (lys grønn, hvit eller mørk) og kartvariant. Knappen «Kart» i tannhjulmenyen blar gjennom alle variantene, og siste valg huskes.
 
@@ -57,7 +57,7 @@ For en skjerm i gangen: åpne siden, velg Fullskjerm i tannhjulmenyen, og la net
 
 Har dagens siste tog gått, viser kortene neste avgang med «i morgen», «i overmorgen» eller ukedag og dato foran klokkeslettet. Siden ser opptil en uke fram.
 
-Over stasjonskortene står «Neste tog» med linje, retning og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Trykk på linjemerket (for eksempel «R14 mot Asker») eller på sporlinja i kartet for å gå rett til valg av linje og retning. Hvert stasjonskort viser også neste avgang i motsatt retning. Kartet flytter seg aldri av seg selv, bare når du drar eller zoomer. Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
+Over stasjonskortene står «Neste tog» med linja og målet og hvor toget er nå (ved en stasjon, mellom to stasjoner, eller «ikke startet enda»). Trykk på linjemerket (for eksempel «R14 mot Asker») eller på sporlinja i kartet for å gå rett til valg av linje og retning. Hvert stasjonskort viser også neste avgang i motsatt retning. Kartet flytter seg aldri av seg selv, bare når du drar eller zoomer. Posisjonen regnes ut fra avgangs- og ankomsttidene til akkurat det toget som kommer først.
 
 Værmeldingen er like høy som stasjonskortene og viser neste hele time og deretter annenhver time, omtrent 15 timer fram. Den vises som en tabell med temperatur, nedbør (mm, blå) og vind (m/s) for åtte tidspunkt, med enhetene til venstre og stedet som overskrift. På mobil (smal skjerm) stables toppen, værtabellen kan rulles sideveis, og kartet fyller resten.
 
