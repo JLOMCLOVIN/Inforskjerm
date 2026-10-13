@@ -312,8 +312,14 @@ linjeLegende.onAdd = () => { const d = L.DomUtil.create("div", "legende"); d.id 
 linjeLegende.addTo(map);
 function tegnLinjekartGrunn() {
   lagRute.clearLayers();
-  const linjer = [...ruteLinjer.entries()].map(([kode, r]) => ({ kode, g: r.geom && r.geom.length > 1 ? r.geom : (r.stopp && r.stopp.length > 1 ? glatt(r.stopp.map(x => [x.lat, x.lon]), 3) : null) }))
-    .filter(x => x.g);
+  const somLinje = stopp => stopp && stopp.length > 1 ? glatt(stopp.map(x => [x.lat, x.lon]), 3) : null;
+  const linjer = [...ruteLinjer.entries()].map(([kode, r]) => {
+    const g = r.geom && r.geom.length > 1 ? r.geom : somLinje(r.stopp);
+    // Delen mellom stasjonen og målet tegnes kraftigere enn resten av linja
+    const del = !g ? null : r.geom && r.geom.length > 1 && r.del ? r.geom.slice(r.del[0], r.del[1] + 1)
+      : r.delStopp ? somLinje(r.stopp.slice(r.delStopp[0], r.delStopp[1] + 1)) : g;
+    return { kode, g, del: del && del.length > 1 ? del : g };
+  }).filter(x => x.g);
   const leg = $("legende");
   if (!linjer.length) { if (leg) leg.innerHTML = ""; return; }
   const pal = kartLys ? LINJEFARGER.lys : LINJEFARGER.mork, mellom = 5, n = linjer.length;
@@ -322,6 +328,8 @@ function tegnLinjekartGrunn() {
   linjer.forEach(x => new ForskjovetLinje(x.g, { pane: "pRute", interactive: true, bubblingMouseEvents: false, forskyv: x.forskyv,
     color: kartLys ? "#ffffff" : "#0b140f", weight: 6.5, opacity: kartLys ? 0.95 : 0.6, lineCap: "round", lineJoin: "round" }).on("click", velgRute).addTo(lagRute));
   linjer.forEach(x => new ForskjovetLinje(x.g, { pane: "pRute", interactive: false, forskyv: x.forskyv,
+    color: x.farge, weight: 3, opacity: 0.5, lineCap: "round", lineJoin: "round" }).addTo(lagRute));
+  linjer.forEach(x => new ForskjovetLinje(x.del, { pane: "pRute", interactive: false, forskyv: x.forskyv,
     color: x.farge, weight: 3.5, opacity: 1, lineCap: "round", lineJoin: "round" }).addTo(lagRute));
   if (leg) leg.innerHTML = n > 1 ? linjer.map(x => `<span><i style="background:${x.farge}"></i>${esc(x.kode)}</span>`).join("") : "";
 }
@@ -501,9 +509,9 @@ function tegnKort() {
 }
 
 /* ---------- Ruter og stopp for alle linjene ----------
-   Én representativ tur per linje (den som går lengst, fra stasjonen lengst unna målet). Geometrien hentes fra Entur
+   Én representativ tur per linje, tegnet fra endestasjon til endestasjon. Delen mellom stasjonen og målet tegnes kraftigst. Geometrien hentes fra Entur
    og lagres i nettleseren en uke, siden sporene sjelden endres. Da følger kartet med hvis linjene endres. */
-const RUTE_CACHE = "togskjerm.rute.v1|", RUTE_ALDER = 7 * 86400000;
+const RUTE_CACHE = "togskjerm.rute.v2|", RUTE_ALDER = 7 * 86400000;
 function forenkle(pts, tol) {      // Douglas-Peucker, så geometrien tar mindre plass i lagringen
   if (pts.length < 3) return pts;
   const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
@@ -531,32 +539,50 @@ async function hentEnRute(tur, stasjon, maal) {
   catch (e) { d = await gql(URL_JP, `{ serviceJourney(id: "${tur.sj}") { ${felt} } }`); }
   const sj = d && d.serviceJourney; if (!sj) return null;
   const kall = (sj.estimatedCalls || []).map(c => c.quay).filter(q => q && isFinite(q.latitude));
-  let a = kall.findIndex(q => iSted(q, stasjon.id)), b = kall.findIndex((q, i) => i > a && iSted(q, maal.id));
-  if (a < 0) a = 0; if (b < 0) b = kall.length - 1;
-  const stopp = kall.slice(a, b + 1).map(q => ({ navn: avkortNavn(q.name), lat: q.latitude, lon: q.longitude }));
-  let geom = null;
+  // Når stasjonen eller målet ikke kjennes igjen på ID, prøv nærmeste stopp
+  const naerStopp = (lat, lon) => kall.reduce((b, q, i) => km(lat, lon, q.latitude, q.longitude) < km(lat, lon, kall[b].latitude, kall[b].longitude) ? i : b, 0);
+  let a = kall.findIndex(q => iSted(q, stasjon.id));
+  if (a < 0 && isFinite(stasjon.lat)) a = naerStopp(stasjon.lat, stasjon.lon);
+  if (a < 0) a = 0;
+  let b = kall.findIndex((q, i) => i > a && iSted(q, maal.id));
+  if (b < 0 && maal && isFinite(maal.lat)) { const x = naerStopp(maal.lat, maal.lon); if (x > a) b = x; }
+  if (b < 0) b = kall.length - 1;
+  const stopp = kall.map(q => ({ navn: avkortNavn(q.name), lat: q.latitude, lon: q.longitude }));
+  let geom = null, del = null;
   if (sj.pointsOnLink && sj.pointsOnLink.points) {
     try {
       const g = dekodPolylinje(sj.pointsOnLink.points);
       if (g.length > 1 && g[0][0] > 45 && g[0][0] < 75 && stopp.length > 1) {
-        let i = naermeste(g, stopp[0].lat, stopp[0].lon), j = naermeste(g, stopp[stopp.length - 1].lat, stopp[stopp.length - 1].lon);
+        geom = forenkle(g, 0.00003);
+        let i = naermeste(geom, stopp[a].lat, stopp[a].lon), j = naermeste(geom, stopp[b].lat, stopp[b].lon);
         if (i > j) [i, j] = [j, i];
-        geom = forenkle(g.slice(i, j + 1), 0.00003);
+        del = [i, j];
       }
     } catch (e) {}
   }
-  const ut = { t: Date.now(), geom, stopp };
+  const ut = { t: Date.now(), geom, del, stopp, delStopp: [a, b] };
   try { localStorage.setItem(nokkel, JSON.stringify(ut)); } catch (e) {}
   return ut;
 }
 let ruterNokkel = "", henterRuter = false;
 async function hentRuter(resultat) {
-  // Velg én tur per linje: den med lengst reisetid til målet
-  const per = new Map();
+  // Velg én tur per linje: fra stasjonen med lengst reisetid til målet, og med den vanligste destinasjonen
+  // (så vi ikke tegner en tur som er kortet inn)
+  const kand = new Map();
   resultat.forEach((r, i) => r.treff.filter(c => c.fremme && !c.antatt).forEach(c => {
-    const lengde = c.fremme - c.expected, x = per.get(c.linje.kode);
-    if (!x || lengde > x.lengde) per.set(c.linje.kode, { tur: c, stasjon: S.stasjoner[i], lengde });
+    if (!kand.has(c.linje.kode)) kand.set(c.linje.kode, []);
+    kand.get(c.linje.kode).push({ tur: c, i, lengde: c.fremme - c.expected });
   }));
+  const per = new Map();
+  kand.forEach((liste, kode) => {
+    const lengst = new Map();
+    liste.forEach(x => lengst.set(x.i, Math.max(lengst.get(x.i) || 0, x.lengde)));
+    const i = [...lengst.entries()].sort((p, q) => q[1] - p[1])[0][0];
+    const her = liste.filter(x => x.i === i), antall = new Map();
+    her.forEach(x => antall.set(x.tur.dest, (antall.get(x.tur.dest) || 0) + 1));
+    const valgt = her.slice().sort((p, q) => (antall.get(q.tur.dest) - antall.get(p.tur.dest)) || (q.lengde - p.lengde))[0];
+    per.set(kode, { tur: valgt.tur, stasjon: S.stasjoner[i], lengde: lengst.get(i) });
+  });
   const nokkel = JSON.stringify([S.stasjoner.map(s => s.id), S.maal.id, [...per.keys()].sort()]);
   if (nokkel === ruterNokkel || henterRuter || !per.size) return;
   henterRuter = true;
