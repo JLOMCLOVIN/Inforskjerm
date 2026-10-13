@@ -23,7 +23,13 @@
   #app { display:flex; flex-direction:column; height:100vh; height:100dvh; }
   header { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; padding:8px 12px; background:var(--panel); position:relative; z-index:1200; }
   #kortWrap { display:flex; flex-direction:column; }
-  .kh { font-size:12px; color:var(--muted); font-weight:400; margin-bottom:4px; }
+  /* Overskrift og posisjonstekst tar aldri mer plass enn kortene, så værmeldingen står stille */
+  .kh { font-size:12px; color:var(--muted); font-weight:400; margin-bottom:2px; white-space:nowrap; overflow:hidden; width:0; min-width:100%; }
+  .kpos { font-size:12px; color:var(--muted); font-weight:400; height:16px; line-height:16px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:0; min-width:100%; }
+  .card .l .lb { font-size:10px; line-height:14px; padding:0 5px; margin-left:3px; letter-spacing:.02em; vertical-align:1px; }
+  .card .d { font-size:11px; color:var(--muted); font-weight:400; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:220px; }
+  .card .d b { color:var(--text); font-weight:600; }
+  .card .d .lbm { font-weight:700; color:var(--text); }
   .lb { display:inline-block; background:var(--prim); color:#fff; font-weight:700; font-size:12px; border-radius:5px; padding:0 6px; line-height:17px; letter-spacing:.02em; }
   #ruteKnapp { display:inline-flex; align-items:center; gap:7px; padding:2px 9px 2px 3px; margin:0 6px 0 4px; border-radius:999px; background:var(--card); border:2px solid var(--prim); color:var(--text); font-size:14px; font-weight:600; vertical-align:middle; }
   #ruteKnapp:hover { background:var(--btnh); }
@@ -35,7 +41,7 @@
   .ln.valgt { background:var(--btn); border-radius:8px; }
   .kh b { color:var(--text); font-weight:600; text-transform:uppercase; letter-spacing:.08em; font-size:11px; }
   #kort { display:flex; gap:8px; }
-  .card { background:var(--card); border:1px solid var(--cardb); border-radius:10px; padding:5px 12px; min-width:128px; }
+  .card { background:var(--card); border:1px solid var(--cardb); border-radius:10px; padding:5px 12px; min-width:128px; max-width:215px; }
   .card .l { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-weight:400; }
   .card .t { font-size:34px; font-weight:300; line-height:1.05; letter-spacing:-.5px; }
   .card .s { font-size:12px; color:var(--muted); min-height:16px; font-weight:400; }
@@ -59,7 +65,7 @@
   #venstre { display:flex; flex-direction:column; align-items:flex-start; gap:5px; }
   #klokke { font-size:38px; font-weight:300; letter-spacing:-.5px; line-height:1; font-variant-numeric:tabular-nums; color:var(--text); }
   #klokke .sek { font-size:18px; color:var(--muted); margin-left:1px; }
-  .card .g { font-size:13px; font-weight:400; margin-top:3px; padding:2px 7px; border-radius:6px; display:inline-block; }
+  .card .g { font-size:13px; font-weight:400; margin-top:3px; padding:2px 7px; border-radius:6px; display:inline-block; line-height:1.3; }
   .card .g:empty { display:none; }
   .card .g.rolig { background:var(--btn); color:var(--text); border:1px solid var(--btnb); }
   .card .g.snart { background:#f2b705; color:#2a1d00; }
@@ -69,7 +75,7 @@
   @keyframes blink { 50% { opacity:.6; } }
   .gangInn { margin:0 4px 0 10px; font-size:13px; color:var(--muted); white-space:nowrap; }
   .gangInn input { width:52px; padding:2px 4px; border-radius:6px; border:1px solid var(--btnb); background:var(--inp); color:var(--text); font-size:14px; font-family:inherit; text-align:right; }
-  #status { font-size:11px; color:var(--muted); text-align:right; max-width:260px; line-height:1.3; font-weight:400; }
+  #status { font-size:11px; color:var(--muted); text-align:right; max-width:180px; line-height:1.3; font-weight:400; }
   #status b.ok { color:var(--ok); } #status b.bad { color:var(--bad); }
   button { background:var(--btn); color:var(--text); border:1px solid var(--btnb); border-radius:8px; padding:7px 12px; font-size:14px; cursor:pointer; white-space:nowrap; font-family:inherit; font-weight:400; }
   button:hover { background:var(--btnh); }
@@ -117,8 +123,8 @@
     #status { text-align:right; max-width:150px; }
     #klokke { font-size:28px; } #klokke .sek { font-size:14px; }
     #kortWrap { width:100%; }
-    .card .m .vei { display:none; } .card .m { max-width:none; }
-    .card { flex:1; min-width:0; padding:4px 10px; }
+    .card .m .vei { display:none; } .card .m, .card .d { max-width:none; }
+    .card { flex:1; min-width:0; max-width:none; padding:4px 10px; }
     .card .t { font-size:30px; }
     #weather { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; align-self:auto; }
     #wTab img { width:18px; height:18px; } #wTab .tmp { font-size:13px; line-height:19px; } #wTab td, #wTab th { padding:0 4px; line-height:13px; }
@@ -153,7 +159,7 @@
 <div id="app">
   <header>
     <div id="venstre"><div id="klokke">--:--</div><nav class="faner"><a href="index.html" class="aktiv">Tog</a><a href="by.html">By</a></nav></div>
-    <div id="kortWrap"><div class="kh"><b>Neste tog</b> <button id="ruteKnapp" title="Bytt mål"><span class="lb" id="lnKode"></span><span id="lnDest"></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button> <span id="togNa">henter posisjon ...</span></div><div id="kort"></div></div>
+    <div id="kortWrap"><div class="kh"><b>Neste tog</b> <button id="ruteKnapp" title="Bytt mål"><span class="lb" id="lnKode"></span><span id="lnDest"></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button> </div><div class="kpos" id="togNa">henter posisjon ...</div><div id="kort"></div></div>
     <div id="weather">Henter vær ...</div>
     <div class="right">
       <div id="status">Starter ...</div>
@@ -216,6 +222,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.min.js"></script>
 <script src="config.js?v=9"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

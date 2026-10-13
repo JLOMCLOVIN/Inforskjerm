@@ -222,7 +222,7 @@ function visLabels() { $("map").classList.toggle("zoomedOut", map.getZoom() < 11
 map.on("zoomend", visLabels);
 
 /* ---------- Kjøretidstilstand ---------- */
-let neste = [], motsatt = [], etter = [];   // neste ankomst per stasjon, og neste avgang i motsatt retning          // neste ankomst per stasjon
+let neste = [], motsatt = [], etter = [], kommende = [];   // kommende: de neste avgangene etter den første, per stasjon   // neste ankomst per stasjon, og neste avgang i motsatt retning          // neste ankomst per stasjon
 let innstilte = [], avvik = [];
 let feil = { tid: null, veh: null, avvik: null, vaer: null, kart: null, rute: null };
 let sisteVehOk = null, lastVehicles = [], vMarkers = new Map(), showAll = false;
@@ -239,7 +239,7 @@ function az() {          // retning (grader) toget beveger seg, ut fra målet
   const f = S.stasjoner[0];
   return kurs(f.lat, f.lon, r.lat, r.lon);
 }
-const linjeTekst = () => linjerNa.size ? [...linjerNa].join(", ") : "tog";
+const linjeTekst = (maks) => { const l = [...linjerNa]; if (!l.length) return "tog"; return maks && l.length > maks ? l.slice(0, maks).join(" · ") + ` +${l.length - maks}` : l.join(" · "); };
 
 /* ---------- Oppsett av kort og stasjoner ---------- */
 function bruk() {
@@ -249,13 +249,13 @@ function bruk() {
   for (const [, m] of vMarkers) map.removeLayer(m); vMarkers.clear();
   tileFeil = 0; tileOk = 0; feil.kart = null; feilKart = null;
   togNaVeh = null; togNaMal = null; togPos = null;
-  $("lnKode").textContent = linjeTekst();
+  $("lnKode").textContent = linjeTekst(4);
   document.body.dataset.tema = S.tema;
   settVaerSynlig();
   if (sistTema !== S.tema) { sistTema = S.tema; if (kartVann) { map.removeLayer(kartVann); } kartVann = undefined; }
 
   $("kort").innerHTML = S.stasjoner.map((s, i) =>
-    `<div class="card"><div class="l">${esc(s.navn)}</div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div><div class="g" id="g${i}"></div><div class="m" id="m${i}"></div></div>`).join("");
+    `<div class="card"><div class="l">${esc(s.navn)} <span class="lk" id="lk${i}"></span></div><div class="t" id="t${i}">-</div><div class="s" id="s${i}"></div><div class="g" id="g${i}"></div><div class="d" id="d${i}"></div><div class="m" id="m${i}"></div></div>`).join("");
 
   stnMarker = S.stasjoner.map((s, i) =>
     L.circleMarker([s.lat, s.lon], { pane: "pStn", radius: 9, color: TEMA[S.tema].stn, weight: 3, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStn)
@@ -356,16 +356,21 @@ async function hentAnkomster() {
     if (!mitt.maal || !trygId(mitt.maal.id)) { await sikreMaal(mitt); if (mitt !== S) return; }
     const { resultat, linjeSett, linjeIder } = await hentStrekning(mitt.stasjoner, mitt.maal);
     if (mitt !== S) return;          // innstillinger endret underveis
-    const nye = [], nyeEtter = [], nyeMot = [], nyeInnstilte = [];
+    const nye = [], nyeEtter = [], nyeMot = [], nyeInnstilte = [], nyeKommende = [];
     resultat.forEach((r, i) => {
       const ok = r.reiser.filter(c => !c.cancelled);
-      nye[i] = ok[0] || null; nyeEtter[i] = ok[1] || null; nyeMot[i] = r.motsatt;
+      nye[i] = ok[0] || null; nyeEtter[i] = ok[1] || null; nyeMot[i] = r.motsatt; nyeKommende[i] = ok.slice(1, 4);
       r.innstilte.forEach(c => nyeInnstilte.push(c));
       dbg(`${mitt.stasjoner[i].navn}: ${r.alle.length} avganger, ${r.treff.length} går til ${mitt.maal.navn}, neste ${nye[i] ? hhmm(nye[i].expected) : "ingen"}`);
     });
-    neste = nye; motsatt = nyeMot; etter = nyeEtter; innstilte = nyeInnstilte; feil.tid = null;
-    if (linjeSett.size) { const forste = !linjerNa.size; linjerNa = linjeSett; linjeIdNa = linjeIder; if (forste) oppdaterKart(lastVehicles); }
-    $("lnKode").textContent = (nesteTog() && nesteTog().linje.kode) || linjeTekst();
+    neste = nye; motsatt = nyeMot; etter = nyeEtter; kommende = nyeKommende; innstilte = nyeInnstilte; feil.tid = null;
+    if (linjeSett.size) {
+      const forste = !linjerNa.size;
+      const forsteTid = k => Math.min(...nye.concat(nyeKommende.flat()).filter(c => c && c.linje.kode === k).map(c => +c.expected), Infinity);
+      linjerNa = new Set([...linjeSett].sort((a, b) => forsteTid(a) - forsteTid(b)));      // linjene i rekkefølgen de går
+      linjeIdNa = linjeIder; if (forste) oppdaterKart(lastVehicles);
+    }
+    $("lnKode").textContent = linjeTekst(4);
     const forste = neste.find(n => n);
     if (forste) hentRute(forste.sj, dagStr(forste.aimed));
     hentTogPos();
@@ -443,6 +448,12 @@ function tegnKort() {
     }
     if (!t || !stnMarker[i]) return;
     tegnGange(i, s, n);
+    const lk = $("lk" + i), dd = $("d" + i);
+    if (lk) lk.innerHTML = n && n.linje ? `<span class="lb">${esc(n.linje.kode)}</span>` : "";
+    if (dd) {
+      const k = (kommende[i] || []).slice(0, 2);
+      dd.innerHTML = k.length ? `Deretter ${k.map(c => `${linjerNa.size > 1 ? `<span class="lbm">${esc(c.linje.kode)}</span> ` : ""}<b>${medDag(c.expected)}</b>`).join(" · ")}` : "";
+    }
     if (!n) { t.textContent = "-"; sub.textContent = "Ingen avganger den neste uka"; stnMarker[i].setTooltipContent(esc(s.navn)); return; }
     const min = Math.round((n.expected - naa) / 60000);
     const forsink = Math.round((n.expected - n.aimed) / 60000);
@@ -539,8 +550,9 @@ async function hentAvvik() {
 function tegnAvvik() {
   let h = "";
   const grp = new Map();
-  innstilte.forEach(c => { const k = hhmm(c.aimed); const g = grp.get(k) || { kode: c.linje.kode, stn: [] }; g.stn.push(c.stasjon); grp.set(k, g); });
-  grp.forEach((st, k) => { h += `<div class="a innstilt"><b>Innstilt:</b> ${esc(st.kode)}, planlagt ${k} (${esc(st.stn.join(" og "))})</div>`; });
+  innstilte.forEach(c => {      // samme tog innstilt ved flere stasjoner vises på én linje
+    const g = grp.get(c.sj) || { kode: c.linje.kode, stn: [], t: c.aimed }; g.stn.push(c.stasjon); if (c.aimed < g.t) g.t = c.aimed; grp.set(c.sj, g); });
+  grp.forEach(st => { const k = medDag(st.t); h += `<div class="a innstilt"><b>Innstilt:</b> ${esc(st.kode)}, planlagt ${k} fra ${esc(st.stn.join(", "))}</div>`; });
   avvik.forEach(a => {
     h += `<div class="a"><b>${esc(a.linje)}:</b> ${esc(a.sam)}` + (a.beskr && a.beskr !== a.sam ? `<span class="d">${esc(a.beskr.slice(0, 280))}</span>` : "") + `</div>`;
   });
@@ -687,12 +699,12 @@ function tegnTogNa() {
   const el = $("togNa"); if (!el) return;
   const n = nesteTog();
   $("lnDest").textContent = "til " + (S.maal && S.maal.navn || "");
-  if (n && n.linje) $("lnKode").textContent = n.linje.kode;
   let tekst = null;
   if (n && togPos && togPos.sj === n.sj) tekst = posFraKall(togPos.kall);
   if (!tekst && togNaVeh) tekst = "nå " + posTekst(togNaVeh, togNaMal);       // reserve: nærmeste tog på kartet
   if (!tekst) tekst = !n ? "ingen flere avganger i dag" : feil.tid ? "posisjon utilgjengelig" : "henter posisjon ...";
-  el.textContent = tekst;
+  el.textContent = (n && n.linje && linjerNa.size > 1 && tekst && !/^(henter|ingen|posisjon)/.test(tekst) ? n.linje.kode + " fra " + n.stasjon + " " : "") + tekst;
+  el.title = el.textContent;
 }
 function oppdaterKart(vs) {
   const hovedtog = vs.filter(v => erLinje(v) && mot(v));
@@ -746,7 +758,7 @@ function tegnStatus() {
   const f = Object.assign({}, feil, { kart: feilKart });
   const liste = Object.keys(f).filter(k => f[k]).map(k => `${navn[k]}: ${esc(f[k])}`);
   const tid = sisteVehOk ? sisteVehOk.toLocaleTimeString("nb-NO") : "-";
-  $("status").innerHTML = liste.length ? `<b class="bad">Delvis ingen kontakt</b><br>${liste.join("<br>")}` : `<b class="ok">Tilkoblet</b> · ${esc(linjeTekst())} · oppdatert ${tid}`;
+  $("status").innerHTML = liste.length ? `<b class="bad">Delvis ingen kontakt</b><br>${liste.join("<br>")}` : `<b class="ok">Tilkoblet</b> · oppdatert ${tid}`;
 }
 
 /* ---------- Knapper på hovedsiden ---------- */
