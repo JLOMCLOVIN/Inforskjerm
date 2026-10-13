@@ -244,7 +244,7 @@ const linjeTekst = (maks) => { const l = [...linjerNa]; if (!l.length) return "t
 /* ---------- Oppsett av kort og stasjoner ---------- */
 function bruk() {
   neste = S.stasjoner.map(() => null); motsatt = S.stasjoner.map(() => null);
-  innstilte = []; avvik = []; rute = null; vehBbox = null; ruteForsok = {};
+  innstilte = []; avvik = []; rute = null; vehBbox = null; ruteForsok = {}; ruteLinjer = new Map(); ruterNokkel = "";
   lagStn.clearLayers(); lagStopp.clearLayers(); lagRute.clearLayers();
   for (const [, m] of vMarkers) map.removeLayer(m); vMarkers.clear();
   tileFeil = 0; tileOk = 0; feil.kart = null; feilKart = null;
@@ -282,15 +282,48 @@ function glatt(pts, n) {   // Chaikin hjørneskjæring: gir myke kurver når vi 
   }
   return pts;
 }
+/* ---------- Linjene i kartet ----------
+   Hver linje tegnes i sin egen farge. Der flere linjer går på samme spor, legges de ved siden av hverandre
+   (forskjøvet noen piksler), så ingen linje skjuler en annen. Forskyvningen regnes på nytt ved hver zoom. */
+const LINJEFARGER = {
+  lys:  ["#c0392b", "#1f5fbf", "#1d7a3b", "#b8610a", "#7b3fa6", "#0e7c86", "#b23a72", "#59661b"],
+  mork: ["#ff7b6b", "#7fb4ff", "#6fdc8f", "#ffb35c", "#c7a0ff", "#5fd6dd", "#ff8fc2", "#c5d46a"]
+};
+function forskyvPunkter(pts, d) {
+  const n = pts.length, ut = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    let dx = b.x - a.x, dy = b.y - a.y; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+    ut.push(L.point(pts[i].x - dy * d, pts[i].y + dx * d));
+  }
+  return ut;
+}
+const ForskjovetLinje = L.Polyline.extend({
+  _projectLatlngs: function (latlngs, result, projectedBounds) {
+    const flat = latlngs[0] instanceof L.LatLng;
+    L.Polyline.prototype._projectLatlngs.call(this, latlngs, result, projectedBounds);
+    const d = this.options.forskyv || 0;
+    if (flat && d && result.length) result[result.length - 1] = forskyvPunkter(result[result.length - 1], d);
+  }
+});
+let ruteLinjer = new Map();      // linjekode -> { geom, stopp, farge }
+const linjeLegende = L.control({ position: "bottomleft" });
+linjeLegende.onAdd = () => { const d = L.DomUtil.create("div", "legende"); d.id = "legende"; return d; };
+linjeLegende.addTo(map);
 function tegnLinjekartGrunn() {
   lagRute.clearLayers();
-  let g = null;
-  if (rute && rute.geom && rute.geom.length) g = rute.geom;                                   // ekte sporgeometri fra Entur
-  else if (rute && rute.stopp && rute.stopp.length > 1) g = glatt(rute.stopp.map(x => [x.lat, x.lon]), 3);   // reserve: glattet linje gjennom stoppene
-  if (!g) return;
-  const kant = kartLys ? "#ffffff" : "#58c47a", kjerne = kartLys ? "#b42318" : "#8fe3ad";
-  L.polyline(g, { pane: "pRute", interactive: true, bubblingMouseEvents: false, color: kant, weight: kartLys ? 8 : 10, opacity: kartLys ? 0.9 : 0.18, lineCap: "round", lineJoin: "round" }).on("click", velgRute).addTo(lagRute);
-  L.polyline(g, { pane: "pRute", color: kjerne, weight: 3, opacity: 0.95, interactive: false, lineCap: "round", lineJoin: "round" }).addTo(lagRute);
+  const linjer = [...ruteLinjer.entries()].map(([kode, r]) => ({ kode, g: r.geom && r.geom.length > 1 ? r.geom : (r.stopp && r.stopp.length > 1 ? glatt(r.stopp.map(x => [x.lat, x.lon]), 3) : null) }))
+    .filter(x => x.g);
+  const leg = $("legende");
+  if (!linjer.length) { if (leg) leg.innerHTML = ""; return; }
+  const pal = kartLys ? LINJEFARGER.lys : LINJEFARGER.mork, mellom = 5, n = linjer.length;
+  linjer.forEach((x, i) => { x.farge = pal[i % pal.length]; x.forskyv = (i - (n - 1) / 2) * mellom; ruteLinjer.get(x.kode).farge = x.farge; });
+  // Lys kant under alle linjene først, så fargene oppå, så kantene ikke dekker nabolinjene
+  linjer.forEach(x => new ForskjovetLinje(x.g, { pane: "pRute", interactive: true, bubblingMouseEvents: false, forskyv: x.forskyv,
+    color: kartLys ? "#ffffff" : "#0b140f", weight: 6.5, opacity: kartLys ? 0.95 : 0.6, lineCap: "round", lineJoin: "round" }).on("click", velgRute).addTo(lagRute));
+  linjer.forEach(x => new ForskjovetLinje(x.g, { pane: "pRute", interactive: false, forskyv: x.forskyv,
+    color: x.farge, weight: 3.5, opacity: 1, lineCap: "round", lineJoin: "round" }).addTo(lagRute));
+  if (leg) leg.innerHTML = n > 1 ? linjer.map(x => `<span><i style="background:${x.farge}"></i>${esc(x.kode)}</span>`).join("") : "";
 }
 
 /* ---------- Ankomsttider ----------
@@ -372,7 +405,7 @@ async function hentAnkomster() {
     }
     $("lnKode").textContent = linjeTekst(4);
     const forste = neste.find(n => n);
-    if (forste) hentRute(forste.sj, dagStr(forste.aimed));
+    hentRuter(resultat); oppdaterRute();
     hentTogPos();
   } catch (e) { feil.tid = e.message; dbg("RUTETID FEIL: " + e.message); }
   tegnKort(); tegnAvvik(); tegnStatus();
@@ -467,46 +500,95 @@ function tegnKort() {
   });
 }
 
-/* ---------- Rute og øvrige stopp (fra en avgang på linja) ---------- */
-async function hentRute(sjId, dato) {
-  const nokkel = JSON.stringify([S.stasjoner.map(s => s.id), S.maal && S.maal.id]);
-  if (rute && rute.nokkel === nokkel) return;
-  if (ruteForsok[nokkel] && Date.now() - ruteForsok[nokkel] < 10 * 60000) return;
-  ruteForsok[nokkel] = Date.now();
-  const mitt = S;
-  const dg = dato ? `(date: "${dato}")` : "";      // turen kan gå en annen dag enn i dag
-  const full = `{ serviceJourney(id: "${sjId}") { pointsOnLink { points } estimatedCalls${dg} { quay { name latitude longitude } } } }`;
-  const enkel = `{ serviceJourney(id: "${sjId}") { estimatedCalls${dg} { quay { name latitude longitude } } } }`;
-  let d = null;
-  try { d = await gql(URL_JP, full); }
-  catch (e1) {
-    dbg("Rute (med geometri) feilet: " + e1.message);
-    try { d = await gql(URL_JP, enkel); } catch (e2) { feil.rute = e2.message; dbg("RUTE FEIL: " + e2.message); tegnStatus(); return; }
+/* ---------- Ruter og stopp for alle linjene ----------
+   Én representativ tur per linje (den som går lengst, fra stasjonen lengst unna målet). Geometrien hentes fra Entur
+   og lagres i nettleseren en uke, siden sporene sjelden endres. Da følger kartet med hvis linjene endres. */
+const RUTE_CACHE = "togskjerm.rute.v1|", RUTE_ALDER = 7 * 86400000;
+function forenkle(pts, tol) {      // Douglas-Peucker, så geometrien tar mindre plass i lagringen
+  if (pts.length < 3) return pts;
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(); let maks = 0, idx = -1;
+    const [ax, ay] = pts[a], [bx, by] = pts[b], dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy || 1e-12;
+    for (let i = a + 1; i < b; i++) {
+      const t = Math.max(0, Math.min(1, ((pts[i][0] - ax) * dx + (pts[i][1] - ay) * dy) / l2));
+      const d = Math.hypot(pts[i][0] - ax - t * dx, pts[i][1] - ay - t * dy);
+      if (d > maks) { maks = d; idx = i; }
+    }
+    if (maks > tol && idx > 0) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
   }
-  if (mitt !== S) return;
-  const sj = d && d.serviceJourney; if (!sj) return;
-  const stopp = (sj.estimatedCalls || []).map(c => c.quay).filter(q => q && isFinite(q.latitude) && isFinite(q.longitude))
-    .map(q => ({ navn: avkortNavn(q.name), lat: q.latitude, lon: q.longitude }));
+  return pts.filter((p, i) => keep[i]).map(p => [Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5]);
+}
+function naermeste(geom, lat, lon) { let bi = 0, bd = Infinity; geom.forEach((p, i) => { const d = (p[0] - lat) ** 2 + (p[1] - lon) ** 2; if (d < bd) { bd = d; bi = i; } }); return bi; }
+const iSted = (q, id) => q && q.stopPlace && (q.stopPlace.id === id || (q.stopPlace.parent && q.stopPlace.parent.id === id));
+async function hentEnRute(tur, stasjon, maal) {
+  const nokkel = RUTE_CACHE + [tur.linje.id, stasjon.id, maal.id].join("|");
+  try { const c = JSON.parse(localStorage.getItem(nokkel) || "null"); if (c && Date.now() - c.t < RUTE_ALDER) return c; } catch (e) {}
+  const felt = `estimatedCalls(date: "${dagStr(tur.aimed)}") { quay { name latitude longitude stopPlace { id parent { id } } } }`;
+  let d;
+  try { d = await gql(URL_JP, `{ serviceJourney(id: "${tur.sj}") { pointsOnLink { points } ${felt} } }`); }
+  catch (e) { d = await gql(URL_JP, `{ serviceJourney(id: "${tur.sj}") { ${felt} } }`); }
+  const sj = d && d.serviceJourney; if (!sj) return null;
+  const kall = (sj.estimatedCalls || []).map(c => c.quay).filter(q => q && isFinite(q.latitude));
+  let a = kall.findIndex(q => iSted(q, stasjon.id)), b = kall.findIndex((q, i) => i > a && iSted(q, maal.id));
+  if (a < 0) a = 0; if (b < 0) b = kall.length - 1;
+  const stopp = kall.slice(a, b + 1).map(q => ({ navn: avkortNavn(q.name), lat: q.latitude, lon: q.longitude }));
   let geom = null;
   if (sj.pointsOnLink && sj.pointsOnLink.points) {
-    try { const g = dekodPolylinje(sj.pointsOnLink.points); if (g.length > 1 && g[0][0] > 45 && g[0][0] < 75) geom = g; } catch (e) {}
+    try {
+      const g = dekodPolylinje(sj.pointsOnLink.points);
+      if (g.length > 1 && g[0][0] > 45 && g[0][0] < 75 && stopp.length > 1) {
+        let i = naermeste(g, stopp[0].lat, stopp[0].lon), j = naermeste(g, stopp[stopp.length - 1].lat, stopp[stopp.length - 1].lon);
+        if (i > j) [i, j] = [j, i];
+        geom = forenkle(g.slice(i, j + 1), 0.00003);
+      }
+    } catch (e) {}
   }
-  rute = { nokkel, geom, stopp };
-  feil.rute = null;
-  dbg(`Rute: ${stopp.length} stopp, geometri ${geom ? geom.length + " punkter" : "ingen (bruker strek mellom stopp)"}`);
+  const ut = { t: Date.now(), geom, stopp };
+  try { localStorage.setItem(nokkel, JSON.stringify(ut)); } catch (e) {}
+  return ut;
+}
+let ruterNokkel = "", henterRuter = false;
+async function hentRuter(resultat) {
+  // Velg én tur per linje: den med lengst reisetid til målet
+  const per = new Map();
+  resultat.forEach((r, i) => r.treff.filter(c => c.fremme && !c.antatt).forEach(c => {
+    const lengde = c.fremme - c.expected, x = per.get(c.linje.kode);
+    if (!x || lengde > x.lengde) per.set(c.linje.kode, { tur: c, stasjon: S.stasjoner[i], lengde });
+  }));
+  const nokkel = JSON.stringify([S.stasjoner.map(s => s.id), S.maal.id, [...per.keys()].sort()]);
+  if (nokkel === ruterNokkel || henterRuter || !per.size) return;
+  henterRuter = true;
+  const mitt = S, ny = new Map();
+  const rekke = [...per.entries()].sort((a, b) => b[1].lengde - a[1].lengde);      // lengste linje ytterst, så rekkefølgen er stabil
+  for (const [kode, x] of rekke) {
+    try { const r = await hentEnRute(x.tur, x.stasjon, mitt.maal); if (r) ny.set(kode, r); }
+    catch (e) { feil.rute = e.message; dbg("RUTE FEIL (" + kode + "): " + e.message); }
+  }
+  henterRuter = false;
+  if (mitt !== S) return;
+  ruterNokkel = nokkel; ruteLinjer = ny; feil.rute = null;
+  dbg(`Ruter: ${[...ny.entries()].map(([k, r]) => `${k} ${r.stopp.length} stopp${r.geom ? "" : " (uten geometri)"}`).join(", ")}`);
+  // Stoppene langs alle linjene, uten de valgte stasjonene
   lagStopp.clearLayers();
-  stopp.filter(x => !S.stasjoner.some(s => km(s.lat, s.lon, x.lat, x.lon) < 0.25)).forEach(x => {
-    L.circleMarker([x.lat, x.lon], { pane: "pStopp", radius: 6, color: TEMA[S.tema].stn, weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStopp)
-      .bindTooltip(esc(x.navn), { permanent: true, direction: "top", offset: [0, -6], className: "stnSmall", pane: "pStoppTip" });
-  });
+  const sett = new Map();
+  ny.forEach(r => r.stopp.forEach(x => { if (!S.stasjoner.some(s => km(s.lat, s.lon, x.lat, x.lon) < 0.25) && ![...sett.values()].some(y => km(y.lat, y.lon, x.lat, x.lon) < 0.25)) sett.set(x.navn, x); }));
+  sett.forEach(x => L.circleMarker([x.lat, x.lon], { pane: "pStopp", radius: 6, color: TEMA[S.tema].stn, weight: 2, fillColor: "#fff", fillOpacity: 1 }).addTo(lagStopp)
+    .bindTooltip(esc(x.navn), { permanent: true, direction: "top", offset: [0, -6], className: "stnSmall", pane: "pStoppTip" }));
   tegnLinjekartGrunn();
-  // Utvid søkeområdet for posisjoner til å dekke hele ruta
-  const pts = (geom || stopp.map(x => [x.lat, x.lon]));
+  oppdaterRute();
+  // Søkeområdet for posisjoner dekker alle linjene
+  const pts = [...ny.values()].flatMap(r => r.geom || r.stopp.map(x => [x.lat, x.lon]));
   if (pts.length) {
     const la = pts.map(p => p[0]), lo = pts.map(p => p[1]);
     vehBbox = { minLat: Math.min(...la) - 0.03, maxLat: Math.max(...la) + 0.03, minLon: Math.min(...lo) - 0.05, maxLon: Math.max(...lo) + 0.05 };
   }
   tegnStatus();
+}
+function oppdaterRute() {      // «rute» brukes til å si hvor neste tog er (stoppene på linja til neste tog)
+  const n = nesteTog(), r = n && ruteLinjer.get(n.linje.kode);
+  rute = r ? { stopp: r.stopp, geom: r.geom } : rute;
 }
 
 /* ---------- Ruteavvik ---------- */
@@ -890,5 +972,5 @@ setInterval(hentPosisjoner, INTERVALL.posisjon * 1000);
 setInterval(hentVaer, INTERVALL.vaerMin * 60000);
 setInterval(tegnKort, 1000);
 
-window.__togskjerm = { get S() { return S; }, bruk, hentStrekning, hentRute, dekodPolylinje, normaliser, delingsLenke, kurs, az }; // for testing
+window.__togskjerm = { get S() { return S; }, map, bruk, hentStrekning, hentRuter, forskyvPunkter, forenkle, dekodPolylinje, normaliser, delingsLenke, kurs, az }; // for testing
 })();
